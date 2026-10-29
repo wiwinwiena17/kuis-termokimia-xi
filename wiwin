@@ -1,0 +1,3996 @@
+The user has provided the prompt file and wants me to actually build the index.html now. Let me create a complete, working single-file game.
+
+Let me plan the structure:
+
+HTML structure
+
+CSS styling (mobile view, max-width 520px)
+
+Three.js background animation
+
+JavaScript game logic
+
+15 thermochemistry questions in Indonesian
+
+Let me build this carefully.
+
+Questions (Termokimia kelas XI):
+
+Stage 1 (1-5): Konsep dasar
+
+Reaksi eksoterm melepas kalor dari sistem ke lingkungan. Tanda ΔH? → negatif
+
+Reaksi endoterm, kalor berpindah dari...? → lingkungan ke sistem
+
+Entalpi adalah...? → jumlah energi total sistem pada tekanan tetap
+
+Pada reaksi eksoterm, suhu lingkungan...? → naik
+
+Persamaan termokimia: 2H2 + O2 → 2H2O ΔH = -572 kJ. Artinya...? → 2 mol H2 bereaksi melepaskan 572 kJ
+
+Stage 2 (6-10): Perhitungan
+
+Kalor: q = m·c·ΔT. 100 g air dipanaskan dari 25 ke 75°C, c = 4,2 J/g°C. q = ? → 100 × 4,2 × 50 = 21.000 J = 21 kJ
+
+Kalor jenis: 50 g logam menyerap 2.300 J, ΔT = 100°C. c = q/(m·ΔT) = 2300/(50×100) = 0,46 J/g°C
+
+Kapasitas kalor: C = q/ΔT. Kalorimeter menyerap 420 J, ΔT = 14°C. C = 30 J/°C
+
+Hukum Hess: reaksi dapat dihitung dari...? → penjumlahan ΔH reaksi-reaksi yang dapat disusun
+
+Kalorimeter: 200 mL air (ρ=1), ΔT=5°C, c=4,2. q = 200×4,2×5 = 4.200 J = 4,2 kJ
+
+Stage 3 (11-15): Aplikasi
+
+ΔHf° H2O(l) = -286 kJ/mol. Entalpi pembentukan 2 mol H2O = -572 kJ
+
+Energi ikatan: reaksi H2 + Cl2 → 2HCl. E(H-H)=436, E(Cl-Cl)=242, E(H-Cl)=431. ΔH = (436+242) - 2(431) = 678 - 862 = -184 kJ
+
+Diagram tingkat energi eksoterm: reaktan lebih tinggi dari produk
+
+Hess: A→B ΔH=-100; B→C ΔH=+50. A→C ΔH = -50 kJ
+
+Persamaan termokimia CH4 + 2O2 → CO2 + 2H2O ΔH=-890 kJ. Pembakaran 0,5 mol CH4 → -445 kJ
+
+Now the game logic:
+
+Score ladder: [100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000, 500000, 1000000]
+
+Safe points: after Q5 (1000), Q10 (32000), Q15 (1000000)
+
+Actually safe points are the score values at indices 4, 9, 14.
+
+Lifelines:
+
+fifty: remove 2 wrong
+
+audience: bar chart with bias
+
+phone: text with bias
+
+Let me write the code.
+
+For Three.js, I'll use r160 from CDN. Use UMD build:
+
+html
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+Wait, in newer versions three.min.js is still available. Let me use r150:
+
+html
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
+That should work.
+
+Background: rotating atom/molecule. Let me do a central sphere (nucleus) with orbiting smaller spheres.
+
+For the obfuscation of answer index, I'll use a simple XOR with a key.
+
+Let me write the full code.
+
+html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Termokimia Millionaire</title>
+<style>
+  /* ... */
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="bg"></canvas>
+  <header>...</header>
+  <main>...</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
+<script>
+  // ...
+</script>
+</body>
+</html>
+Let me be careful with the layout since we need it inside max-width 520px centered.
+
+Layout plan:
+
+body: dark gradient background
+
+#bg canvas: fixed, full screen, z-index -1
+
+#app: max-width 520px, margin 0 auto, padding, position relative, z-index 1
+
+header: flex row with title, score, stage, buttons
+
+main: card with question, options grid, lifelines
+
+Let me code it out.
+
+js
+const QUESTIONS = [
+  {
+    id: 1, stage: 1, level: "mudah",
+    question: "Pada reaksi eksoterm, kalor berpindah dari ...",
+    options: ["lingkungan ke sistem", "sistem ke lingkungan", "sistem ke sistem", "lingkungan ke lingkungan"],
+    answerIndex: 1,
+    explanation: "Reaksi eksoterm melepas kalor dari sistem ke lingkungan sehingga suhu lingkungan naik dan ΔH bernilai negatif."
+  },
+  // ...
+];
+Let me flesh out all 15 questions properly.
+
+Eksoterm arah kalor → sistem ke lingkungan. Options: A) lingkungan ke sistem, B) sistem ke lingkungan, C) sistem ke sistem, D) lingkungan ke lingkungan. answerIndex=1
+
+Tanda ΔH endoterm → positif. "Pada reaksi endoterm, tanda ΔH adalah..." A) negatif, B) positif, C) nol, D) tidak tentu. answerIndex=1
+
+Entalpi adalah → "Entalpi (H) adalah..." A) kalor reaksi pada volume tetap, B) jumlah energi total sistem pada tekanan tetap, C) energi kinetik molekul, D) energi ikatan. answerIndex=1
+
+Suhu lingkungan eksoterm → naik. "Ketika reaksi eksoterm berlangsung, suhu lingkungan akan..." A) turun, B) tetap, C) naik, D) tidak terpengaruh. answerIndex=2
+
+Persamaan termokimia arti → 2 mol H2 melepas 572 kJ. "Diketahui: 2H₂(g) + O₂(g) → 2H₂O(l) ΔH = -572 kJ. Pernyataan yang benar adalah..." A) reaksi menyerap 572 kJ, B) pembentukan 2 mol H₂O melepas 572 kJ, C) reaksi endoterm, D) ΔH bernilai positif. answerIndex=1
+
+Kalorimetri q=mcΔT → 21 kJ. "100 g air dipanaskan dari 25 °C menjadi 75 °C (c = 4,2 J/g·°C). Kalor yang diserap air adalah..." A) 2.100 J, B) 21.000 J, C) 210.000 J, D) 21 J. answerIndex=1 (21000 J)
+
+Kalor jenis → 0,46. "50 g logam menyerap kalor 2.300 J sehingga suhunya naik 100 °C. Kalor jenis logam tersebut adalah..." A) 0,46 J/g·°C, B) 1,15 J/g·°C, C) 4,6 J/g·°C, D) 0,23 J/g·°C. answerIndex=0
+
+Kapasitas kalor → 30 J/°C. "Kalorimeter menyerap 420 J ketika suhunya naik 14 °C. Kapasitas kalor kalorimeter adalah..." A) 14 J/°C, B) 30 J/°C, C) 60 J/°C, D) 5.880 J/°C. answerIndex=1
+
+Hukum Hess → penjumlahan. "Hukum Hess menyatakan bahwa perubahan entalpi suatu reaksi..." A) bergantung pada jalur reaksi, B) hanya bergantung pada keadaan awal dan akhir, C) sama dengan nol, D) tidak dapat dihitung. answerIndex=1
+
+Kalorimeter larutan → 4.200 J. "200 mL air (ρ = 1 g/mL) mengalami kenaikan suhu 5 °C setelah reaksi (c = 4,2 J/g·°C). Kalor reaksi yang menyertai adalah..." A) 4.200 J, B) 4.000 J, C) 840 J, D) 42.000 J. answerIndex=0 (200*4.2*5 = 4200)
+
+ΔHf° H2O × 2 mol → -572 kJ. "Diketahui ΔHf° H₂O(l) = -286 kJ/mol. Entalpi pembentukan 2 mol H₂O(l) adalah..." A) -286 kJ, B) -572 kJ, C) +286 kJ, D) +572 kJ. answerIndex=1
+
+Energi ikatan HCl → -184 kJ. "Diketahui energi ikatan: H–H = 436, Cl–Cl = 242, H–Cl = 431 kJ/mol. ΔH reaksi H₂ + Cl₂ → 2HCl adalah..." A) -184 kJ, B) +184 kJ, C) -247 kJ, D) +247 kJ. answerIndex=0
+
+(436 + 242) - 2(431) = 678 - 862 = -184
+
+Diagram eksoterm → reaktan > produk. "Pada diagram tingkat energi reaksi eksoterm, posisi reaktan terhadap produk adalah..." A) lebih rendah dari produk, B) sama dengan produk, C) lebih tinggi dari produk, D) tidak dapat ditentukan. answerIndex=2
+
+Hess hitung → -50. "Diketahui: A → B ΔH = -100 kJ; B → C ΔH = +50 kJ. Menurut Hukum Hess, ΔH reaksi A → C adalah..." A) -150 kJ, B) -50 kJ, C) +50 kJ, D) +150 kJ. answerIndex=1
+
+Pembakaran CH4 0,5 mol → -445 kJ. "Pembakaran CH₄: CH₄(g) + 2O₂(g) → CO₂(g) + 2H₂O(l) ΔH = -890 kJ. Kalor yang dilepas pada pembakaran 0,5 mol CH₄ adalah..." A) 890 kJ, B) 445 kJ, C) 1780 kJ, D) 222,5 kJ. answerIndex=1
+
+Good, let me code it.
+
+For the answer index obfuscation, I'll XOR with a key and store the obfuscated index, deobfuscate at load. Actually simpler: don't store the answer index in the localStorage, and obfuscate the answer index in the runtime object. Let me use a simple XOR with a runtime-derived key (not plain text).
+
+Actually the requirement: "Tidak menggunakan localStorage untuk menyimpan jawaban benar secara plain-text yang mudah dicurangi (minimal obfuscate index jawaban)." — this means the localStorage shouldn't store the answer index in plain text. But we don't need to store answer index at all in localStorage. So as long as the localStorage data doesn't contain the answer index, that's fine. Let me make sure the saveState doesn't include the questions/answers.
+
+But also the runtime QUESTIONS array in source code has answerIndex. That's plain text in the source. To "obfuscate" we can XOR. Let me XOR the answerIndex with a small key.
+
+js
+const _K = 0x5A;
+function obf(n){ return n ^ _K; }
+function deobf(n){ return n ^ _K; }
+// Store as `answerEnc: obf(answerIndex)`
+Then deobf when needed. Simple enough.
+
+Let me handle the mobile view: max-width 520px, padding.
+
+For Three.js, I'll draw an atom with nucleus + orbits with electrons. Change color scheme based on state.
+
+js
+let renderer, scene, camera, atomGroup;
+let atomColorTarget = new THREE.Color(0x3b82f6); // blue
+let currentColor = new THREE.Color(0x3b82f6);
+
+function initThree(){
+  const canvas = document.getElementById('bg');
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  } catch(e){
+    canvas.style.display = 'none';
+    document.body.classList.add('no-webgl');
+    return;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 100);
+  camera.position.z = 6;
+  
+  // Nucleus
+  const nucleusGeo = new THREE.IcosahedronGeometry(0.8, 1);
+  const nucleusMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, wireframe: true });
+  const nucleus = new THREE.Mesh(nucleusGeo, nucleusMat);
+  scene.add(nucleus);
+  atomGroup = new THREE.Group();
+  atomGroup.add(nucleus);
+  
+  // Orbits
+  const orbitColors = [0x60a5fa, 0x818cf8, 0x38bdf8];
+  for(let i=0;i<3;i++){
+    const r = 1.8 + i*0.4;
+    const points = [];
+    const segments = 48;
+    for(let j=0;j<=segments;j++){
+      const a = (j/segments) * Math.PI*2;
+      points.push(new THREE.Vector3(Math.cos(a)*r, Math.sin(a)*r, 0));
+    }
+    const orbitGeo = new THREE.BufferGeometry().setFromPoints(points);
+    const orbitMat = new THREE.LineBasicMaterial({ color: orbitColors[i], transparent:true, opacity:0.4 });
+    const orbit = new THREE.Line(orbitGeo, orbitMat);
+    orbit.rotation.x = (Math.PI/3) * (i-1);
+    orbit.rotation.y = (Math.PI/4) * i;
+    atomGroup.add(orbit);
+    
+    // electrons
+    for(let k=0;k<2;k++){
+      const eGeo = new THREE.SphereGeometry(0.12, 12, 12);
+      const eMat = new THREE.MeshBasicMaterial({ color: orbitColors[i] });
+      const electron = new THREE.Mesh(eGeo, eMat);
+      electron.userData = { orbitR: r, orbitTilt: orbit.rotation.clone(), offset: k*Math.PI };
+      atomGroup.add(electron);
+    }
+  }
+  scene.add(atomGroup);
+  
+  // store references to nucleus material for color updates
+  window._nucleusMat = nucleusMat;
+  
+  window.addEventListener('resize', onResize);
+  animate();
+}
+For animating electrons along orbits... it's a bit complex. Let me simplify — just have the whole group rotate slowly, and electrons just orbit in their own group. Or skip electrons and just do a rotating atom with orbits. Simpler.
+
+Actually, let me do:
+
+Nucleus (wireframe icosahedron)
+
+3 orbit rings rotating at different rates
+
+small electron spheres moving along the orbits
+
+The electrons: put each electron in a pivot group with the same rotation as the orbit, and move it along a circle. Or just apply the same transform.
+
+Let me simplify: each orbit is a Group. Inside is a Line (circle) and 2 small spheres positioned along the circle. The Group rotates to tilt, and we animate rotation.z of the group to spin the whole thing.
+
+Wait if we rotate the group.z, the line also rotates but since the line is a circle it looks the same. And the electrons rotate along. That works!
+
+js
+for(let i=0;i<3;i++){
+  const orbitGroup = new THREE.Group();
+  const r = 1.8 + i*0.4;
+  // circle
+  const points = [...];
+  const orbitGeo = new THREE.BufferGeometry().setFromPoints(points);
+  const orbitMat = new THREE.LineBasicMaterial({ color: orbitColors[i], transparent:true, opacity:0.4 });
+  const orbitLine = new THREE.Line(orbitGeo, orbitMat);
+  orbitGroup.add(orbitLine);
+  // electrons
+  for(let k=0;k<2;k++){
+    const eGeo = new THREE.SphereGeometry(0.1, 10, 10);
+    const eMat = new THREE.MeshBasicMaterial({ color: orbitColors[i] });
+    const e = new THREE.Mesh(eGeo, eMat);
+    e.userData.offset = k*Math.PI;
+    e.userData.r = r;
+    orbitGroup.add(e);
+  }
+  orbitGroup.rotation.x = (Math.PI/3) * i - Math.PI/3;
+  orbitGroup.rotation.y = (Math.PI/4) * i;
+  orbitGroup.userData.spinSpeed = 0.5 + i*0.3;
+  atomGroup.add(orbitGroup);
+}
+For animation, we rotate each orbitGroup.z, but that would rotate the electrons AND the line. Line rotating is fine (circle). But the orbitGroup has rotation.x and rotation.y set already. If we set rotation.z, it adds to that. Let me instead use a separate inner Group for electrons that spins.
+
+Actually simpler: In animate loop, for each orbitGroup, iterate children, and update position of spheres based on time.
+
+Let me do it this way:
+
+js
+function animate(t){
+  requestAnimationFrame(animate);
+  const time = t * 0.001;
+  // rotate atom
+  if(atomGroup){
+    atomGroup.rotation.y += 0.003;
+    atomGroup.rotation.x = Math.sin(time*0.5) * 0.2;
+    // move electrons
+    atomGroup.children.forEach(child => {
+      if(child.userData && child.userData.isOrbit){
+        child.children.forEach(c => {
+          if(c.userData && c.userData.isElectron){
+            const a = time * child.userData.spinSpeed + c.userData.offset;
+            c.position.x = Math.cos(a) * c.userData.r;
+            c.position.y = Math.sin(a) * c.userData.r;
+            c.position.z = 0;
+          }
+        });
+      }
+    });
+    // color transition
+    if(window._nucleusMat){
+      window._nucleusMat.color.lerp(atomColorTarget, 0.05);
+    }
+  }
+  renderer.render(scene, camera);
+}
+Hmm, but the electron positions are set relative to the orbitGroup, and the orbitGroup is rotated. That works — the electron moves along the local XY plane, then orbitGroup rotation tilts it in 3D.
+
+OK.
+
+For color changes based on state:
+
+default: 0x3b82f6 (blue)
+
+correct: 0x22c55e (green)
+
+wrong: 0xef4444 (red)
+
+stage 3: 0xfbbf24 (gold)
+
+Let me set state color for a few seconds then revert.
+
+Now the game logic:
+
+js
+const state = {
+  version: 1,
+  player: "Siswa",
+  startedAt: null,
+  finishedAt: null,
+  currentIndex: 0,
+  score: 0,
+  stage: 1,
+  lifelines: { fifty: false, audience: false, phone: false }, // false = available
+  history: [],
+  status: "idle", // idle | in-progress | won | lost | walked-away
+  timerEnabled: true,
+  selectedOption: null,
+  locked: false
+};
+Wait, lifelines in the prompt: "lifelines": { "fifty": true, "audience": false, "phone": true } — this means used or available? Looking at it, it seems true = used (unavailable) based on context. Hmm, or available. Let me interpret as: true means still available. Actually the example has fifty: true, audience: false, phone: true for a game at index 7 (question 8), so audience was used. So true = available, false = used. Let me use that.
+
+Hmm actually re-reading: "lifelines": { "fifty": true, "audience": false, "phone": true } — if at question 8 they used audience, then audience should be false. So yes: true = available, false = used.
+
+Let me go with that.
+
+Score ladder:
+
+js
+const SCORE_LADDER = [100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000, 500000, 1000000];
+const SAFE_POINTS = [4, 9, 14]; // indices of safe points
+Safe values at indices 4, 9, 14: 1000, 32000, 1000000.
+
+If you answer wrong at question 6 (index 5), you fall to safe point at index 4 = 1000.
+
+js
+function getSafeScore(currentIndex){
+  // find highest safe point <= currentIndex
+  let safe = 0;
+  for(const sp of SAFE_POINTS){
+    if(sp < currentIndex){  // index is the question we failed at
+      safe = SCORE_LADDER[sp];
+    }
+  }
+  return safe;
+}
+Wait, if currentIndex is the question we're on (about to answer), we've already passed questions 0..currentIndex-1. If we fail at currentIndex, we fall to safe point that is < currentIndex.
+
+Actually — if we answer question 5 (index 4) correctly, we get 1000 (safe). If we answer question 6 (index 5) wrong, we fall back to 1000. So safe points we've crossed are at indices < currentIndex. Correct.
+
+But if we're at question 15 (index 14) and get it wrong, we fall back to 32000 (safe point at index 9). Only if we get question 15 right do we get 1000000.
+
+So getSafeScore(currentIndex) looks for safe point indices < currentIndex.
+
+But wait — if we're at question 10 (index 9) and get it wrong, we fall to index 4 = 1000 (since 9 is not < 9). Hmm, that doesn't feel right. The safe point at index 9 means "if you complete questions 1-10 correctly, you're guaranteed 32000". But if you fail on question 10, you only keep the safe point from question 5.
+
+Actually in the real game, the milestone safe points are typically at certain positions and you keep the last one you passed. If milestone is at question 5 and 10, failing question 10 you fall to question 5's safe point.
+
+So:
+
+Fail Q1-4 → score 0
+
+Pass Q5, fail Q6-9 → score 1000
+
+Pass Q10, fail Q11-14 → score 32000
+
+Pass Q15 → score 1000000 (win)
+
+Walk away → keep current score
+
+So safe point at index 4 (Q5) means after answering Q5 correctly you get 1000 locked in. Safe at index 9 (Q10) → 32000.
+
+If you fail at Q6-9, you fall back to 1000.
+If you fail at Q10 (index 9), you're at index 9, safe points at indices < 9 are index 4 → 1000. Yes correct.
+
+Actually wait, "fail at Q10" — you haven't completed Q10, so you don't get its safe point 32000. You only get 1000. That's correct.
+
+So getSafeScore(currentIndex) = highest safe point value where safePointIndex < currentIndex. Good.
+
+Now let me code everything.
+
+js
+function startGame(){
+  state.startedAt = new Date().toISOString();
+  state.currentIndex = 0;
+  state.score = 0;
+  state.stage = 1;
+  state.lifelines = { fifty: true, audience: true, phone: true };
+  state.history = [];
+  state.status = 'in-progress';
+  state.selectedOption = null;
+  state.locked = false;
+  saveState();
+  render();
+  startTimer();
+}
+Timer: 45 seconds per question. When time up, auto-lock or auto-fail? Let's say auto-lock current selection if selected, else auto-fail (walk away with current score, or zero).
+
+Actually simpler: time up = treat as wrong answer. Or walk away. Let me make time up = walk away with current safe score. Hmm. Or wrong answer → fall to safe point.
+
+Let me do: time up = you lose (fall to safe point). Simple.
+
+Actually more gentle: time up = walk away with current score. But that could be exploited. Let me make it: time up = wrong = fall to safe point. This matches "you didn't answer in time, you lose".
+
+Hmm, actually in the real WWTBAM, no time limit. Let me just make it optional and time up = walk away with current locked safe score. That's fairer. Actually no, let me make it simply "you fail this question" = wrong.
+
+Ugh, this is getting complicated. Let me go with: time up = treat as wrong (no selection) = fall to safe point. But if timer is disabled (toggle), no time pressure.
+
+Actually, let me simplify and make time up = walk away with current score (what you have right now, not safe point). This is more player-friendly for education. No wait, if a student just sits there they'd get current score which might be more than safe. Hmm.
+
+You know what, let me just make time up = walk away with current locked score = current score before answering this question (which is safe point value).
+
+Actually the "current score" as displayed is the accumulated score from previous correct answers. If you've answered Q1-5 correctly, current score = 1000. If you walk away now, you keep 1000. So time up at Q6 = walk away with 1000 = same as safe point. OK that works and is fair.
+
+But wait, if you answer Q6 correctly, score becomes 2000 (unlocked, not safe). If you time out at Q7, do you keep 2000 or fall to 1000?
+
+In the real game, walk away = keep current score. Answer wrong = fall to safe. Time out... let's say walk away = keep current score.
+
+OK let me go: time up = walk away (keep current displayed score). Actually let me make it cleaner: time up = wrong answer. That's simplest and most straightforward.
+
+Hmm, let me just do: time up = wrong answer (fall to safe point). Simple, clear, and educational. If timer disabled, no time pressure.
+
+Actually wait — one more consideration. What if the user wants to skip a hard question? With time limit that becomes "you must answer". Without time limit, no pressure. Fine.
+
+Let me go with: time up → treated as wrong (fall to safe point, game over). This is a reasonable game mechanic.
+
+Hmm actually let me reconsider once more. For educational purposes (this is for students), being time-limited and losing everything might be discouraging. Let me default timer OFF (mode santai) and let user enable it. That way it's optional and non-punitive by default. Good.
+
+OK, let me code the whole thing now.
+
+js
+const TOTAL_QUESTIONS = 15;
+const TIME_LIMIT = 45;
+
+const SCORE_LADDER = [100,200,300,500,1000,2000,4000,8000,16000,32000,64000,125000,250000,500000,1000000];
+const SAFE_POINTS = [4,9,14];
+
+const STORAGE_KEY = 'termokimia_millionaire_v1';
+
+const _K = 0x5A; // obfuscation key
+const QUESTIONS_RAW = [
+  // stage 1
+  {id:1,stage:1,level:"mudah",question:"...",options:[...],a:1,explanation:"..."},
+  // ...
+];
+Wait, the answer is stored in a field. Let me obfuscate it. So _a: obf(a) or just apply obf at parse time:
+
+js
+const QUESTIONS = QUESTIONS_RAW.map(q => ({
+  ...q,
+  answerIndex: deobf(q.a)
+}));
+But q.a is still plain text in the source. That's fine — the requirement is about localStorage. But let me obfuscate a bit anyway for safety.
+
+js
+const QUESTIONS = QUESTIONS_RAW.map(q => ({
+  id: q.id, stage: q.stage, level: q.level,
+  question: q.question,
+  options: q.options,
+  answerIndex: q.a ^ 0x5A,
+  explanation: q.explanation
+}));
+So I store a as already XORed. E.g., answerIndex 1 → a = 1 ^ 0x5A = 0x5B = 91. So in the source I write a: 91. That's fine.
+
+Let me just compute them:
+
+answerIndex 0 → a = 0x5A = 90
+
+answerIndex 1 → a = 0x5B = 91
+
+answerIndex 2 → a = 0x58 = 88
+
+answerIndex 3 → a = 0x59 = 89
+
+Questions:
+
+ansIdx=1 → a=91
+
+ansIdx=1 → a=91
+
+ansIdx=1 → a=91
+
+ansIdx=2 → a=88
+
+ansIdx=1 → a=91
+
+ansIdx=1 → a=91 (21000)
+
+ansIdx=0 → a=90
+
+ansIdx=1 → a=91
+
+ansIdx=1 → a=91
+
+ansIdx=0 → a=90
+
+ansIdx=1 → a=91
+
+ansIdx=0 → a=90
+
+ansIdx=2 → a=88
+
+ansIdx=1 → a=91
+
+ansIdx=1 → a=91
+
+Wait, let me double check q13. "Pada diagram tingkat energi reaksi eksoterm, posisi reaktan terhadap produk adalah..."
+
+A) lebih rendah dari produk
+
+B) sama dengan produk
+
+C) lebih tinggi dari produk
+
+D) tidak dapat ditentukan
+
+Answer: C (index 2) ✓
+
+OK.
+
+Let me now write the full HTML.
+
+Actually for the obfuscation, let me make it slightly better than XOR with a fixed key. Use per-item key like q.a ^ q.id ^ 0x5A. Then deobf = a ^ id ^ 0x5A.
+
+Hmm, but then I need to compute the stored a values. Let me just do a simple one. Fixed key XOR is fine.
+
+js
+function deobf(idx, key){ return idx ^ key ^ 0x5A; }
+OK, let me use a combination to make it slightly less obvious:
+
+js
+const OBF_KEY = 0x5A;
+function encodeAnswer(idx){ return idx ^ OBF_KEY; }
+function decodeAnswer(enc){ return enc ^ OBF_KEY; }
+And store aEnc instead of a. Actually let me just use a to keep the code cleaner.
+
+Let me compute:
+
+ansIdx 0 → 90
+
+ansIdx 1 → 91
+
+ansIdx 2 → 88
+
+ansIdx 3 → 89
+
+Let me write the questions now.
+
+js
+const QUESTIONS_RAW = [
+  // ===== STAGE 1: Konsep Dasar =====
+  {
+    id: 1, stage: 1, level: "mudah",
+    question: "Pada reaksi eksoterm, kalor berpindah dari ...",
+    options: ["lingkungan ke sistem", "sistem ke lingkungan", "sistem ke sistem", "lingkungan ke lingkungan"],
+    a: 91, // 1 ^ 0x5A
+    explanation: "Reaksi eksoterm melepaskan kalor dari sistem ke lingkungan sehingga suhu lingkungan naik dan ΔH bernilai negatif."
+  },
+  {
+    id: 2, stage: 1, level: "mudah",
+    question: "Pada reaksi endoterm, tanda perubahan entalpi (ΔH) adalah ...",
+    options: ["negatif", "positif", "nol", "tidak tentu"],
+    a: 91,
+    explanation: "Reaksi endoterm menyerap kalor sehingga entalpi sistem bertambah dan ΔH bertanda positif."
+  },
+  {
+    id: 3, stage: 1, level: "mudah",
+    question: "Entalpi (H) didefinisikan sebagai ...",
+    options: [
+      "kalor reaksi pada volume tetap",
+      "jumlah energi total sistem pada tekanan tetap",
+      "energi kinetik rata-rata molekul",
+      "energi ikatan rata-rata molekul"
+    ],
+    a: 91,
+    explanation: "Entalpi adalah jumlah energi total (energi dalam + kerja) sistem pada tekanan tetap."
+  },
+  {
+    id: 4, stage: 1, level: "sedang",
+    question: "Ketika reaksi eksoterm berlangsung di dalam gelas kimia, suhu lingkungan akan ...",
+    options: ["turun", "tetap", "naik", "tidak terpengaruh"],
+    a: 88, // 2 ^ 0x5A
+    explanation: "Karena sistem melepaskan kalor ke lingkungan, energi lingkungan bertambah sehingga suhunya naik."
+  },
+  {
+    id: 5, stage: 1, level: "sedang",
+    question: "Diketahui: 2H₂(g) + O₂(g) → 2H₂O(l) ΔH = -572 kJ. Pernyataan yang benar adalah ...",
+    options: [
+      "reaksi menyerap 572 kJ kalor",
+      "pembentukan 2 mol H₂O melepaskan 572 kJ kalor",
+      "reaksi berlangsung endoterm",
+      "ΔH bernilai positif karena membentuk air"
+    ],
+    a: 91,
+    explanation: "ΔH negatif menandakan reaksi eksoterm; pembentukan 2 mol air melepaskan 572 kJ kalor."
+  },
+  // ===== STAGE 2: Perhitungan =====
+  {
+    id: 6, stage: 2, level: "sedang",
+    question: "100 g air dipanaskan dari 25 °C menjadi 75 °C (c = 4,2 J/g·°C). Kalor yang diserap air adalah ...",
+    options: ["2.100 J", "21.000 J", "210.000 J", "21 J"],
+    a: 91,
+    explanation: "q = m·c·ΔT = 100 × 4,2 × (75 − 25) = 21.000 J = 21 kJ."
+  },
+  {
+    id: 7, stage: 2, level: "sedang",
+    question: "50 g logam menyerap kalor 2.300 J sehingga suhunya naik 100 °C. Kalor jenis logam tersebut adalah ...",
+    options: ["0,46 J/g·°C", "1,15 J/g·°C", "4,6 J/g·°C", "0,23 J/g·°C"],
+    a: 90,
+    explanation: "c = q / (m·ΔT) = 2.300 / (50 × 100) = 0,46 J/g·°C."
+  },
+  {
+    id: 8, stage: 2, level: "sedang",
+    question: "Kalorimeter menyerap 420 J ketika suhunya naik 14 °C. Kapasitas kalor kalorimeter adalah ...",
+    options: ["14 J/°C", "30 J/°C", "60 J/°C", "5.880 J/°C"],
+    a: 91,
+    explanation: "C = q / ΔT = 420 / 14 = 30 J/°C."
+  },
+  {
+    id: 9, stage: 2, level: "sulit",
+    question: "Hukum Hess menyatakan bahwa perubahan entalpi suatu reaksi ...",
+    options: [
+      "bergantung pada jalur reaksi",
+      "hanya bergantung pada keadaan awal dan akhir",
+      "selalu bernilai nol",
+      "tidak dapat dihitung dari reaksi lain"
+    ],
+    a: 91,
+    explanation: "Hukum Hess: ΔH reaksi hanya bergantung pada keadaan awal dan akhir, tidak pada jalur reaksi."
+  },
+  {
+    id: 10, stage: 2, level: "sulit",
+    question: "200 mL air (ρ = 1 g/mL) mengalami kenaikan suhu 5 °C setelah reaksi (c = 4,2 J/g·°C). Kalor reaksi yang menyertai adalah ...",
+    options: ["4.200 J", "4.000 J", "840 J", "42.000 J"],
+    a: 90,
+    explanation: "m = ρ·V = 200 g; q = m·c·ΔT = 200 × 4,2 × 5 = 4.200 J."
+  },
+  // ===== STAGE 3: Aplikasi & Analisis =====
+  {
+    id: 11, stage: 3, level: "sulit",
+    question: "Diketahui ΔHf° H₂O(l) = -286 kJ/mol. Entalpi pembentukan 2 mol H₂O(l) adalah ...",
+    options: ["-286 kJ", "-572 kJ", "+286 kJ", "+572 kJ"],
+    a: 91,
+    explanation: "Entalpi pembentukan bersifat ekstensif: 2 × (−286) = −572 kJ."
+  },
+  {
+    id: 12, stage: 3, level: "sulit",
+    question: "Diketahui energi ikatan: H–H = 436, Cl–Cl = 242, H–Cl = 431 kJ/mol. ΔH reaksi H₂ + Cl₂ → 2HCl adalah ...",
+    options: ["-184 kJ", "+184 kJ", "-247 kJ", "+247 kJ"],
+    a: 90,
+    explanation: "ΔH = ΣE ikatan putus − ΣE ikatan terbentuk = (436+242) − 2(431) = −184 kJ."
+  },
+  {
+    id: 13, stage: 3, level: "sulit",
+    question: "Pada diagram tingkat energi reaksi eksoterm, posisi reaktan terhadap produk adalah ...",
+    options: [
+      "lebih rendah dari produk",
+      "sama dengan produk",
+      "lebih tinggi dari produk",
+      "tidak dapat ditentukan"
+    ],
+    a: 88,
+    explanation: "Reaksi eksoterm melepaskan energi sehingga entalpi reaktan > produk."
+  },
+  {
+    id: 14, stage: 3, level: "sulit",
+    question: "Diketahui: A → B ΔH = -100 kJ; B → C ΔH = +50 kJ. Menurut Hukum Hess, ΔH reaksi A → C adalah ...",
+    options: ["-150 kJ", "-50 kJ", "+50 kJ", "+150 kJ"],
+    a: 91,
+    explanation: "ΔH(A→C) = ΔH(A→B) + ΔH(B→C) = −100 + 50 = −50 kJ."
+  },
+  {
+    id: 15, stage: 3, level: "sulit",
+    question: "Pembakaran CH₄: CH₄(g) + 2O₂(g) → CO₂(g) + 2H₂O(l) ΔH = -890 kJ. Kalor yang dilepas pada pembakaran 0,5 mol CH₄ adalah ...",
+    options: ["890 kJ", "445 kJ", "1.780 kJ", "222,5 kJ"],
+    a: 91,
+    explanation: "0,5 mol × 890 kJ/mol = 445 kJ kalor dilepas."
+  }
+];
+
+const QUESTIONS = QUESTIONS_RAW.map(q => ({
+  id: q.id,
+  stage: q.stage,
+  level: q.level,
+  question: q.question,
+  options: q.options,
+  answerIndex: q.a ^ 0x5A,
+  explanation: q.explanation
+}));
+Good.
+
+Now the state and game logic. Let me write the render function that displays the current question.
+
+js
+let state = null;
+let timerId = null;
+let timeLeft = TIME_LIMIT;
+let memStore = {}; // fallback for localStorage
+
+function storageGet(key){
+  try { return localStorage.getItem(key); }
+  catch(e){ return memStore[key] || null; }
+}
+function storageSet(key, val){
+  try { localStorage.setItem(key, val); }
+  catch(e){ memStore[key] = val; }
+}
+function storageRemove(key){
+  try { localStorage.removeItem(key); }
+  catch(e){ delete memStore[key]; }
+}
+
+function saveState(){
+  try {
+    storageSet(STORAGE_KEY, JSON.stringify(state));
+  } catch(e){ /* ignore */ }
+}
+
+function loadState(){
+  try {
+    const raw = storageGet(STORAGE_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  } catch(e){ return null; }
+}
+
+function clearState(){
+  storageRemove(STORAGE_KEY);
+}
+Now the render:
+
+js
+function render(){
+  renderHeader();
+  renderQuestion();
+  renderLifelines();
+  renderControls();
+}
+Hmm, this is getting long. Let me structure it with DOM updates.
+
+Actually, let me just build the whole HTML dynamically or use a mix of static HTML + DOM manipulation.
+
+Static HTML structure:
+
+html
+<div id="app">
+  <header id="header">
+    <div class="brand">💎 Termokimia Millionaire</div>
+    <div class="meta">
+      <span id="stageBadge">Stage 1</span>
+      <span id="qBadge">Soal 1/15</span>
+    </div>
+    <div class="score-row">
+      <div class="score">Rp <span id="scoreVal">0</span></div>
+      <button id="btnDownload" title="Unduh hasil">⬇ JSON</button>
+      <button id="btnReset" title="Reset">↺</button>
+    </div>
+  </header>
+  <main id="main">
+    <div id="timerBar" class="timer-bar"><div id="timerFill"></div></div>
+    <div id="questionCard" class="card">
+      <div id="timerText" class="timer-text"></div>
+      <p id="questionText"></p>
+      <div id="options" class="options"></div>
+      <div id="feedback" class="feedback"></div>
+    </div>
+    <div id="lifelines" class="lifelines"></div>
+    <div id="controls" class="controls">
+      <button id="btnLock" disabled>🔒 Kunci Jawaban</button>
+      <button id="btnWalk">🚪 Berhenti</button>
+    </div>
+  </main>
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <h2 id="modalTitle"></h2>
+      <div id="modalBody"></div>
+      <div id="modalActions"></div>
+    </div>
+  </div>
+</div>
+For the initial screen, show a modal asking to start or continue.
+
+Actually, let me handle this more elegantly. On load:
+
+Try to load state from localStorage
+
+If exists and status === 'in-progress', show modal "Lanjutkan atau Mulai Baru?"
+
+If exists and status === 'won'/'lost', show modal "Permainan selesai. Main lagi?"
+
+If not exists, show modal "Mulai bermain?"
+
+Let me code this.
+
+Actually let me simplify — always start with a start modal. If there's an in-progress game, offer to continue.
+
+js
+function boot(){
+  initThree();
+  renderInitialModal();
+}
+Initial modal content:
+
+Title: "Termokimia Millionaire"
+
+Body: brief description + optional "Lanjutkan" if saved game exists
+
+Actions: "Mulai Baru" / "Lanjutkan" (if saved)
+
+Let me code the options rendering:
+
+js
+function renderOptions(){
+  const q = QUESTIONS[state.currentIndex];
+  const container = document.getElementById('options');
+  container.innerHTML = '';
+  const letters = ['A','B','C','D'];
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.dataset.index = i;
+    const hidden = state.hiddenOptions && state.hiddenOptions.includes(i);
+    if(hidden) btn.classList.add('hidden-opt');
+    btn.innerHTML = `<span class="letter">${letters[i]}</span><span class="text">${opt}</span>`;
+    if(state.selectedOption === i) btn.classList.add('selected');
+    btn.disabled = state.locked || hidden;
+    btn.addEventListener('click', () => selectOption(i));
+    container.appendChild(btn);
+  });
+}
+Hmm, state.hiddenOptions for 50:50. But this state should persist across reload? Probably yes if lifeline was used but question not answered. But actually if the player uses 50:50 and reloads, we'd need to know which options were removed. That's tricky. Let me just make 50:50 non-persistent — if they reload after using it, they lose that lifeline but the question resets with all options. Actually that's exploitable. Let me think...
+
+Simplest: save which options were hidden in state. Add state.hiddenOptions = [] and save/restore it. But when moving to next question, reset it.
+
+Or even simpler: don't persist hiddenOptions across reloads but keep lifeline used. So reloading after using 50:50 keeps the lifeline used but shows all options again (slight exploit, but whatever).
+
+Actually let me just save it. It's not much code.
+
+js
+// state.hiddenOptions = [] // indices of removed options for current question
+Reset in startQuestion().
+
+OK, let me also add the "selected" state and lock flow.
+
+Flow:
+
+User clicks option → selectOption(i) → highlight, enable lock button
+
+User clicks lock → confirm modal → lockAnswer()
+
+lockAnswer() → check if correct
+
+Correct: show green, update score, update Three.js color to green, then advance after delay
+
+Wrong: show red, update Three.js color to red, end game
+
+Advance to next question or end game
+
+Let me code:
+
+js
+function selectOption(i){
+  if(state.locked) return;
+  const q = QUESTIONS[state.currentIndex];
+  if(state.hiddenOptions && state.hiddenOptions.includes(i)) return;
+  state.selectedOption = i;
+  renderOptions();
+  document.getElementById('btnLock').disabled = false;
+}
+
+function lockAnswer(){
+  if(state.locked) return;
+  if(state.selectedOption === null) return;
+  showConfirmModal();
+}
+
+function confirmLock(){
+  closeModal();
+  state.locked = true;
+  const q = QUESTIONS[state.currentIndex];
+  const chosen = state.selectedOption;
+  const isCorrect = chosen === q.answerIndex;
+  
+  // update option styles
+  renderOptions(); // re-render with locked=true to disable
+  
+  const buttons = document.querySelectorAll('.option');
+  buttons.forEach((btn, i) => {
+    btn.disabled = true;
+    if(i === q.answerIndex) btn.classList.add('correct');
+    if(i === chosen && !isCorrect) btn.classList.add('wrong');
+  });
+  
+  // feedback
+  const fb = document.getElementById('feedback');
+  fb.innerHTML = (isCorrect ? '✅ Benar! ' : '❌ Salah. ') + q.explanation;
+  fb.className = 'feedback show ' + (isCorrect ? 'correct' : 'wrong');
+  
+  // Three.js color
+  flashAtom(isCorrect ? 0x22c55e : 0xef4444);
+  
+  // record history
+  state.history.push({
+    q: q.id,
+    chosen: ['A','B','C','D'][chosen],
+    correct: isCorrect,
+    timeMs: (TIME_LIMIT - timeLeft) * 1000
+  });
+  
+  stopTimer();
+  
+  if(isCorrect){
+    // advance
+    setTimeout(() => {
+      if(state.currentIndex >= TOTAL_QUESTIONS - 1){
+        // won
+        state.score = SCORE_LADDER[14];
+        state.status = 'won';
+        state.finishedAt = new Date().toISOString();
+        saveState();
+        showEndModal('won');
+      } else {
+        state.score = SCORE_LADDER[state.currentIndex]; // score for correctly answering this
+        state.currentIndex++;
+        state.stage = QUESTIONS[state.currentIndex].stage;
+        state.selectedOption = null;
+        state.locked = false;
+        state.hiddenOptions = [];
+        saveState();
+        render();
+        startTimer();
+      }
+    }, 2200);
+  } else {
+    // wrong → end game, fall to safe
+    const safe = getSafeScore(state.currentIndex);
+    state.score = safe;
+    state.status = 'lost';
+    state.finishedAt = new Date().toISOString();
+    saveState();
+    setTimeout(() => showEndModal('lost'), 2200);
+  }
+}
+Wait, score logic. When you answer Q1 (index 0) correctly, you get SCORE_LADDER[0] = 100. When you answer Q5 (index 4) correctly, you get SCORE_LADDER[4] = 1000. Yes.
+
+But state.score = SCORE_LADDER[state.currentIndex] before incrementing. For Q1 (index 0), that's 100. Correct.
+
+Hmm but if we're at index 0 and answer wrong, safe = getSafeScore(0) = 0 (no safe points < 0). Good.
+
+Let me check getSafeScore:
+
+js
+function getSafeScore(currentIndex){
+  let safe = 0;
+  for(const sp of SAFE_POINTS){
+    if(sp < currentIndex) safe = SCORE_LADDER[sp];
+  }
+  return safe;
+}
+If currentIndex=0 (failing Q1): safe points < 0 = none → 0. ✓
+If currentIndex=1 (failing Q2): safe points < 1 = none → 0. ✓
+If currentIndex=4 (failing Q5): safe points < 4 = none → 0. Hmm, failing Q5 when you've answered Q1-4 correctly = you don't get Q5's safe point. Score = 0. Is that right? In the real game... yeah, safe point is at Q5, only reached if you answer Q5 correctly. So failing Q5 = 0. ✓
+If currentIndex=5 (failing Q6): safe points < 5 = [4] → 1000. ✓
+If currentIndex=9 (failing Q10): safe points < 9 = [4] → 1000. ✓ (Q10's safe point is only reached after Q10)
+If currentIndex=10 (failing Q11): safe points < 10 = [4,9] → 32000. ✓
+If currentIndex=14 (failing Q15): safe points < 14 = [4,9] → 32000. ✓
+
+Good.
+
+Now the walk away:
+
+js
+function walkAway(){
+  // keep current score
+  const currentScore = state.currentIndex > 0 ? SCORE_LADDER[state.currentIndex - 1] : 0;
+  state.score = currentScore;
+  state.status = 'walked-away';
+  state.finishedAt = new Date().toISOString();
+  saveState();
+  showEndModal('walked-away');
+}
+Wait — if you're on Q6 (index 5), you've answered Q1-5 correctly, so current score should be SCORE_LADDER[4] = 1000. state.currentIndex - 1 = 4, so SCORE_LADDER[4] = 1000. ✓
+
+If you're on Q1 (index 0), you haven't answered anything, so 0. ✓
+
+If you're on Q15 (index 14), you've answered Q1-14 correctly, so SCORE_LADDER[13] = 500000. ✓
+
+Good.
+
+Now lifelines.
+
+50:50:
+
+js
+function useFifty(){
+  if(!state.lifelines.fifty || state.locked) return;
+  state.lifelines.fifty = false;
+  const q = QUESTIONS[state.currentIndex];
+  const wrong = [0,1,2,3].filter(i => i !== q.answerIndex);
+  // shuffle wrong and pick 2
+  shuffle(wrong);
+  state.hiddenOptions = wrong.slice(0, 2);
+  saveState();
+  renderLifelines();
+  renderOptions();
+}
+But what if the selected option is one of the hidden ones? Then unselect it. Actually if they haven't selected yet, fine. If they have, they can't select a hidden one. But their current selection might be hidden... wait, we disable hidden options, and if they had selected one, we should unselect.
+
+Let me add:
+
+js
+if(state.hiddenOptions.includes(state.selectedOption)){
+  state.selectedOption = null;
+}
+Actually wait, could they have already selected before using 50:50? Yes. So we need to handle it. Let me check after hiding.
+
+Actually the real 50:50 is used before selecting. But let me handle it anyway.
+
+js
+function useFifty(){
+  if(!state.lifelines.fifty || state.locked) return;
+  state.lifelines.fifty = false;
+  const q = QUESTIONS[state.currentIndex];
+  const wrong = [0,1,2,3].filter(i => i !== q.answerIndex);
+  shuffle(wrong);
+  state.hiddenOptions = wrong.slice(0, 2);
+  if(state.hiddenOptions.includes(state.selectedOption)){
+    state.selectedOption = null;
+  }
+  saveState();
+  renderLifelines();
+  renderOptions();
+  updateLockButton();
+}
+Audience:
+
+js
+function useAudience(){
+  if(!state.lifelines.audience || state.locked) return;
+  state.lifelines.audience = false;
+  const q = QUESTIONS[state.currentIndex];
+  // Generate percentages with bias toward correct answer
+  const correctBias = 0.7 + Math.random() * 0.15; // 70-85%
+  const percents = [0,0,0,0];
+  percents[q.answerIndex] = Math.round(correctBias * 100);
+  let remaining = 100 - percents[q.answerIndex];
+  const others = [0,1,2,3].filter(i => i !== q.answerIndex);
+  // distribute remaining randomly
+  const r1 = Math.random() * remaining * 0.6;
+  const r2 = Math.random() * (remaining - r1) * 0.7;
+  const r3 = remaining - r1 - r2;
+  percents[others[0]] = Math.round(r1);
+  percents[others[1]] = Math.round(r2);
+  percents[others[2]] = Math.round(r3);
+  // fix rounding
+  const sum = percents.reduce((a,b)=>a+b,0);
+  percents[q.answerIndex] += (100 - sum);
+  
+  saveState();
+  renderLifelines();
+  showAudienceModal(percents);
+}
+Phone:
+
+js
+function usePhone(){
+  if(!state.lifelines.phone || state.locked) return;
+  state.lifelines.phone = false;
+  const q = QUESTIONS[state.currentIndex];
+  const isRight = Math.random() < 0.8;
+  let friendAnswer;
+  if(isRight){
+    friendAnswer = q.answerIndex;
+  } else {
+    const wrong = [0,1,2,3].filter(i => i !== q.answerIndex);
+    friendAnswer = wrong[Math.floor(Math.random()*wrong.length)];
+  }
+  const letter = ['A','B','C','D'][friendAnswer];
+  saveState();
+  renderLifelines();
+  showPhoneModal(letter, isRight);
+}
+The phone modal: "Halo! Menurut saya jawabannya {letter}. {extra if wrong} Semoga membantu!"
+
+Now the timer:
+
+js
+function startTimer(){
+  stopTimer();
+  if(!state.timerEnabled) {
+    document.getElementById('timerBar').style.display = 'none';
+    return;
+  }
+  document.getElementById('timerBar').style.display = 'block';
+  timeLeft = TIME_LIMIT;
+  updateTimerDisplay();
+  timerId = setInterval(() => {
+    timeLeft -= 0.1;
+    updateTimerDisplay();
+    if(timeLeft <= 0){
+      stopTimer();
+      timeUp();
+    }
+  }, 100);
+}
+
+function stopTimer(){
+  if(timerId){ clearInterval(timerId); timerId = null; }
+}
+
+function updateTimerDisplay(){
+  const pct = Math.max(0, timeLeft / TIME_LIMIT) * 100;
+  document.getElementById('timerFill').style.width = pct + '%';
+  document.getElementById('timerText').textContent = `⏱ ${Math.ceil(Math.max(0, timeLeft))}s`;
+}
+
+function timeUp(){
+  if(state.locked) return;
+  // treat as wrong
+  state.locked = true;
+  const q = QUESTIONS[state.currentIndex];
+  state.history.push({
+    q: q.id,
+    chosen: null,
+    correct: false,
+    timeMs: TIME_LIMIT * 1000
+  });
+  state.score = getSafeScore(state.currentIndex);
+  state.status = 'timeout';
+  state.finishedAt = new Date().toISOString();
+  saveState();
+  renderOptions();
+  const fb = document.getElementById('feedback');
+  fb.innerHTML = '⏰ Waktu habis! ' + q.explanation;
+  fb.className = 'feedback show wrong';
+  flashAtom(0xef4444);
+  setTimeout(() => showEndModal('timeout'), 2200);
+}
+Download JSON:
+
+js
+function downloadJSON(){
+  const data = {
+    ...state,
+    summary: {
+      totalQuestions: TOTAL_QUESTIONS,
+      answered: state.history.length,
+      correct: state.history.filter(h => h.correct).length,
+      wrong: state.history.filter(h => !h.correct && h.chosen !== null).length,
+      avgTimeMs: state.history.length ? Math.round(state.history.reduce((s,h)=>s+h.timeMs,0) / state.history.length) : 0
+    }
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `hasil-termokimia-${state.player.replace(/\s+/g,'-')}-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+OK, let me also handle the "start new game" modal when a saved game exists.
+
+js
+function boot(){
+  initThree();
+  const saved = loadState();
+  if(saved && saved.status === 'in-progress'){
+    showContinueModal(saved);
+  } else if(saved){
+    // finished game — offer new game
+    showStartModal(true);
+  } else {
+    showStartModal(false);
+  }
+}
+Let me now put it all together.
+
+Also, flashAtom:
+
+js
+let atomColorTarget = new THREE.Color(0x3b82f6);
+let atomColorRevertTimer = null;
+
+function flashAtom(hex){
+  atomColorTarget = new THREE.Color(hex);
+  if(atomColorRevertTimer) clearTimeout(atomColorRevertTimer);
+  atomColorRevertTimer = setTimeout(() => {
+    atomColorTarget = new THREE.Color(getStageColor(state.stage));
+  }, 1500);
+}
+
+function getStageColor(stage){
+  return stage === 3 ? 0xfbbf24 : (stage === 2 ? 0x818cf8 : 0x3b82f6);
+}
+Also update atom color when stage changes. In the render function:
+
+js
+function updateAtomForStage(){
+  atomColorTarget = new THREE.Color(getStageColor(state.stage));
+}
+Called after advancing.
+
+Hmm but the flash will override. Let me just handle this simply. After each successful answer, flash green, then revert to stage color.
+
+Wait, but if the answer is correct and we advance to next question, the stage might change. Let me update atomColorTarget to the new stage color after the flash, and the flash revert timer will set it correctly.
+
+Actually let me set the revert to always check current stage:
+
+js
+atomColorRevertTimer = setTimeout(() => {
+  atomColorTarget = new THREE.Color(getStageColor(state.stage));
+}, 1500);
+Since state.stage is updated before the timer fires (the 1500ms delay), it will revert to the correct stage color.
+
+But for the wrong answer, we want it to stay red. Hmm. Let me not have it auto-revert on wrong. Or... let me handle:
+
+js
+function flashAtom(hex, revert = true){
+  atomColorTarget = new THREE.Color(hex);
+  if(atomColorRevertTimer) clearTimeout(atomColorRevertTimer);
+  if(revert){
+    atomColorRevertTimer = setTimeout(() => {
+      atomColorTarget = new THREE.Color(getStageColor(state.stage));
+    }, 2500);
+  }
+}
+OK let me just make it revert always after 2500ms. By then the game state is settled.
+
+Now let me write the full CSS.
+
+Design: dark theme, glassmorphism, blue accents.
+
+css
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: #0a0e1a;
+  color: #e8eefc;
+  overflow-x: hidden;
+}
+body {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+#bg {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+#app {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 520px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100vh;
+}
+header {
+  background: rgba(20, 27, 48, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.brand {
+  font-size: 15px;
+  font-weight: 700;
+  background: linear-gradient(90deg, #60a5fa, #a78bfa, #fbbf24);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.3px;
+}
+.meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #94a3b8;
+}
+.meta span {
+  background: rgba(59, 130, 246, 0.15);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.score {
+  flex: 1;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fbbf24;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
+}
+.score small {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-right: 4px;
+}
+.score-row button {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.score-row button:active {
+  transform: scale(0.96);
+  background: rgba(59, 130, 246, 0.3);
+}
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.timer-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  overflow: hidden;
+  display: none;
+}
+.timer-bar.active {
+  display: block;
+}
+#timerFill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+  transition: width 0.1s linear;
+}
+.card {
+  background: rgba(20, 27, 48, 0.8);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.timer-text {
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: right;
+  display: none;
+}
+.timer-text.active { display: block; }
+#questionText {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #e8eefc;
+  min-height: 60px;
+}
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  color: #e8eefc;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+}
+.option .letter {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(96, 165, 250, 0.15);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  font-weight: 700;
+  color: #93c5fd;
+  font-size: 13px;
+}
+.option .text { flex: 1; }
+.option:active:not(:disabled) {
+  transform: scale(0.99);
+}
+.option.selected {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 1px #60a5fa, 0 0 16px rgba(96, 165, 250, 0.3);
+}
+.option.selected .letter {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+.option.correct {
+  background: rgba(34, 197, 94, 0.25);
+  border-color: #22c55e;
+  box-shadow: 0 0 0 1px #22c55e, 0 0 16px rgba(34, 197, 94, 0.3);
+  animation: pulseCorrect 0.5s;
+}
+.option.correct .letter {
+  background: #22c55e;
+  color: white;
+  border-color: #22c55e;
+}
+.option.wrong {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  animation: shake 0.4s;
+}
+.option.wrong .letter {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+.option.hidden-opt {
+  opacity: 0.15;
+  pointer-events: none;
+  filter: grayscale(1);
+}
+.option:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+@keyframes pulseCorrect {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.feedback {
+  display: none;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border-radius: 10px;
+  animation: fadeIn 0.3s;
+}
+.feedback.show { display: block; }
+.feedback.correct {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #86efac;
+}
+.feedback.wrong {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.lifelines {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.lifeline {
+  flex: 1;
+  background: rgba(20, 27, 48, 0.7);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  border-radius: 12px;
+  padding: 10px 4px;
+  color: #93c5fd;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+.lifeline .icon { font-size: 18px; }
+.lifeline:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+.lifeline.used {
+  opacity: 0.25;
+  filter: grayscale(1);
+  text-decoration: line-through;
+}
+.lifeline:not(:disabled):active {
+  transform: scale(0.96);
+  background: rgba(59, 130, 246, 0.2);
+}
+.controls {
+  display: flex;
+  gap: 8px;
+}
+.controls button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#btnLock {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border-color: #60a5fa;
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+#btnLock:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+#btnWalk {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  max-width: 130px;
+}
+.controls button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+/* Modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s;
+}
+.modal.hidden {
+  display: none;
+}
+.modal-box {
+  background: #141b30;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  border-radius: 18px;
+  padding: 20px;
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: popIn 0.25s;
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+.modal-box h2 {
+  font-size: 18px;
+  color: #fbbf24;
+  text-align: center;
+}
+.modal-box .body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: #cbd5e1;
+}
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.modal-actions button {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border-color: #60a5fa;
+  color: white;
+}
+.btn-secondary {
+  background: rgba(148, 163, 184, 0.15);
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #cbd5e1;
+}
+.btn-danger {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+.modal-actions button:active {
+  transform: scale(0.97);
+}
+/* Audience chart */
+.audience-chart {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 140px;
+  gap: 8px;
+  padding: 8px 0;
+}
+.aud-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  justify-content: flex-end;
+}
+.aud-fill {
+  width: 100%;
+  background: linear-gradient(180deg, #60a5fa, #3b82f6);
+  border-radius: 6px 6px 0 0;
+  min-height: 4px;
+  transition: height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.aud-pct {
+  font-size: 12px;
+  font-weight: 700;
+  color: #93c5fd;
+}
+.aud-letter {
+  font-size: 13px;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+/* End modal summary */
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.summary-item {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+}
+.summary-item .label {
+  font-size: 11px;
+  color: #94a3b8;
+}
+.summary-item .value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e8eefc;
+  margin-top: 2px;
+}
+</style>
+Now let me also add a settings toggle for timer in the start modal or header. Actually, let me add it to the start modal, and also make it available in the game via a small settings area. Let me add a toggle in the start modal only.
+
+Hmm, but the requirement says "Timer opsional 45 detik per soal (bisa dimatikan untuk mode santai — sediakan toggle)." So we need a toggle. Let me add it to the start modal and to the header (as a small button).
+
+Actually, let me add it to the start modal and to a settings modal accessible via header. Or just have it in the start modal. That's simpler. Let me add it to the start modal.
+
+Also, maybe add a toggle in the header as a small icon button. OK let me do both.
+
+Actually let me just add it as a button in the header row. Clicking it toggles timer on/off. That's clean.
+
+html
+<button id="btnTimer" title="Timer">⏱</button>
+And in the header row alongside download/reset. Or in the meta row.
+
+Let me put it in the meta row:
+
+html
+<div class="meta">
+  <span id="stageBadge">Stage 1</span>
+  <span id="qBadge">Soal 1/15</span>
+  <button id="btnTimer" class="meta-btn" title="Mode Timer">⏱ ON</button>
+</div>
+Hmm, the meta row has flex justify-content: space-between, so 3 items works.
+
+Actually, let me just put all three buttons (download, reset, timer) in the score-row, and keep meta simple with 2 items.
+
+html
+<div class="score-row">
+  <div class="score"><small>NILAI</small><span id="scoreVal">0</span></div>
+  <button id="btnTimer" title="Toggle timer">⏱</button>
+  <button id="btnDownload" title="Unduh JSON">⬇</button>
+  <button id="btnReset" title="Reset">↺</button>
+</div>
+OK.
+
+For the timer toggle, when OFF, don't show timer bar and don't start timer.
+
+When toggled mid-game, restart timer if ON.
+
+Let me now write the complete render function:
+
+js
+function render(){
+  if(!state) return;
+  const q = QUESTIONS[state.currentIndex];
+  if(!q) return;
+  
+  // header
+  document.getElementById('stageBadge').textContent = `Stage ${q.stage}`;
+  document.getElementById('qBadge').textContent = `Soal ${state.currentIndex + 1}/${TOTAL_QUESTIONS}`;
+  document.getElementById('scoreVal').textContent = formatScore(state.score);
+  
+  // timer button
+  const btnTimer = document.getElementById('btnTimer');
+  btnTimer.textContent = state.timerEnabled ? '⏱' : '⏸';
+  btnTimer.style.opacity = state.timerEnabled ? 1 : 0.5;
+  
+  // question
+  document.getElementById('questionText').textContent = q.question;
+  
+  // feedback
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback';
+  fb.textContent = '';
+  
+  // options
+  renderOptions();
+  
+  // lifelines
+  renderLifelines();
+  
+  // controls
+  document.getElementById('btnLock').disabled = true;
+  document.getElementById('btnWalk').disabled = false;
+  
+  // timer
+  if(state.timerEnabled && !state.locked){
+    startTimer();
+  } else {
+    stopTimer();
+    document.getElementById('timerBar').classList.remove('active');
+    document.getElementById('timerText').classList.remove('active');
+  }
+}
+Wait, the timer bar should be visible only when timer is enabled. Let me use class toggles.
+
+js
+document.getElementById('timerBar').classList.toggle('active', state.timerEnabled && !state.locked);
+document.getElementById('timerText').classList.toggle('active', state.timerEnabled && !state.locked);
+OK, and for startTimer, don't toggle the class — just use CSS from state. Let me simplify:
+
+In render():
+
+toggle timerBar active class based on state
+
+if active, call startTimer()
+
+else, stopTimer()
+
+In startTimer():
+
+just start the interval, don't toggle classes
+
+js
+function startTimer(){
+  stopTimer();
+  timeLeft = TIME_LIMIT;
+  updateTimerDisplay();
+  timerId = setInterval(() => {
+    timeLeft -= 0.1;
+    updateTimerDisplay();
+    if(timeLeft <= 0){
+      stopTimer();
+      timeUp();
+    }
+  }, 100);
+}
+OK.
+
+Now renderLifelines:
+
+js
+function renderLifelines(){
+  const container = document.getElementById('lifelines');
+  container.innerHTML = '';
+  const lifelines = [
+    { key: 'fifty', icon: '50:50', label: '50:50', fn: useFifty },
+    { key: 'audience', icon: '👥', label: 'Tanya Penonton', fn: useAudience },
+    { key: 'phone', icon: '📞', label: 'Telepon Teman', fn: usePhone }
+  ];
+  lifelines.forEach(l => {
+    const btn = document.createElement('button');
+    btn.className = 'lifeline';
+    const available = state.lifelines[l.key] && !state.locked;
+    if(!available) btn.classList.add('used');
+    btn.disabled = !available;
+    btn.innerHTML = `<span class="icon">${l.icon}</span><span>${l.label}</span>`;
+    btn.addEventListener('click', l.fn);
+    container.appendChild(btn);
+  });
+}
+For "50:50" as icon, it's text not emoji. That should be fine as text.
+
+Now let me handle the end game modal.
+
+js
+function showEndModal(reason){
+  stopTimer();
+  const title = reason === 'won' ? '🏆 Selamat!' :
+                reason === 'lost' ? '💔 Permainan Berakhir' :
+                reason === 'walked-away' ? '🚪 Anda Berhenti' :
+                '⏰ Waktu Habis';
+  const correct = state.history.filter(h => h.correct).length;
+  const answered = state.history.length;
+  const avgTime = answered ? Math.round(state.history.reduce((s,h)=>s+h.timeMs,0)/answered/1000) : 0;
+  const score = state.score;
+  
+  let body = '';
+  if(reason === 'won'){
+    body = `<p>Luar biasa! Anda berhasil menjawab 15 soal Termokimia dengan benar dan membawa pulang nilai tertinggi!</p>`;
+  } else if(reason === 'lost'){
+    body = `<p>Sayang sekali! Anda kehilangan kesempatan tetapi masih membawa nilai aman sebesar <b>${formatScore(score)}</b>.</p>`;
+  } else if(reason === 'walked-away'){
+    body = `<p>Anda memilih berhenti dan membawa pulang nilai <b>${formatScore(score)}</b>.</p>`;
+  } else {
+    body = `<p>Waktu habis! Nilai yang Anda bawa pulang: <b>${formatScore(score)}</b>.</p>`;
+  }
+  
+  body += `
+    <div class="summary-grid" style="margin-top:8px">
+      <div class="summary-item"><div class="label">Nilai Akhir</div><div class="value">${formatScore(score)}</div></div>
+      <div class="summary-item"><div class="label">Soal Benar</div><div class="value">${correct}/${answered}</div></div>
+      <div class="summary-item"><div class="label">Soal Dijawab</div><div class="value">${answered}</div></div>
+      <div class="summary-item"><div class="label">Rata-rata Waktu</div><div class="value">${avgTime}s</div></div>
+    </div>
+  `;
+  
+  showModal(title, body, [
+    { label: '⬇ Unduh Hasil (.json)', class: 'btn-primary', fn: downloadJSON },
+    { label: '🔄 Main Lagi', class: 'btn-secondary', fn: () => { closeModal(); clearState(); state = null; showStartModal(false); } }
+  ]);
+}
+For the start modal:
+
+js
+function showStartModal(hadPrevious){
+  const body = `
+    <p>Selamat datang di <b>Termokimia Millionaire</b>!</p>
+    <p>Jawab 15 soal Termokimia kelas XI dalam 3 stage untuk meraih nilai tertinggi. Gunakan 3 bantuan: <b>50:50</b>, <b>Tanya Penonton</b>, dan <b>Telepon Teman</b>.</p>
+    <p style="font-size:12px;color:#94a3b8;margin-top:8px">Nilai aman: 1.000 (stage 1) • 32.000 (stage 2) • 1.000.000 (stage 3)</p>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px">
+      <input type="checkbox" id="timerCheck" ${state?.timerEnabled !== false ? 'checked' : ''}>
+      Aktifkan timer 45 detik per soal (mode tantangan)
+    </label>
+  `;
+  showModal('💎 Termokimia Millionaire', body, [
+    { label: '▶ Mulai Bermain', class: 'btn-primary', fn: () => {
+      const timerCheck = document.getElementById('timerCheck');
+      const timerOn = timerCheck ? timerCheck.checked : true;
+      closeModal();
+      startNewGame(timerOn);
+    }}
+  ]);
+}
+Hmm but state might be null when showStartModal is called. Let me handle that.
+
+Actually let me create a temporary defaultState for the modal, or just pass a boolean. Let me pass it:
+
+js
+function showStartModal(timerDefault = true){
+  ...
+  <input type="checkbox" id="timerCheck" ${timerDefault ? 'checked' : ''}>
+  ...
+}
+And call showStartModal() from boot with default true.
+
+For the continue modal:
+
+js
+function showContinueModal(saved){
+  const body = `
+    <p>Ditemukan permainan yang belum selesai:</p>
+    <div class="summary-grid" style="margin:8px 0">
+      <div class="summary-item"><div class="label">Soal</div><div class="value">${saved.currentIndex + 1}/${TOTAL_QUESTIONS}</div></div>
+      <div class="summary-item"><div class="label">Nilai</div><div class="value">${formatScore(saved.score)}</div></div>
+      <div class="summary-item"><div class="label">Stage</div><div class="value">${saved.stage}</div></div>
+      <div class="summary-item"><div class="label">Bantuan</div><div class="value">${Object.values(saved.lifelines).filter(v=>v).length}/3</div></div>
+    </div>
+    <p>Lanjutkan permainan atau mulai baru?</p>
+  `;
+  showModal('🔄 Lanjutkan Permainan?', body, [
+    { label: '▶ Lanjutkan', class: 'btn-primary', fn: () => { closeModal(); state = saved; render(); } },
+    { label: '🔄 Mulai Baru', class: 'btn-secondary', fn: () => { closeModal(); clearState(); showStartModal(true); } }
+  ]);
+}
+Wait, when continuing, we need to also start the timer. But render() handles that. And we need to set the state globally. Good.
+
+Actually, state = saved; render(); — but render() uses state.startedAt etc. Fine.
+
+But there's a subtle issue: the timer. If timerEnabled in the saved state, it should start. render() handles it via the class toggle + startTimer.
+
+OK. But what about state.hiddenOptions? It should be saved and restored. When continuing, if the player used 50:50 on the current question, hiddenOptions should be restored. Yes, that's already in state and gets saved.
+
+But wait — the locked state. If the player reloads after locking but before the answer registers... actually locking is synchronous, so that's not an issue. But if they lock and the state advances, and then they reload before the timeout fires, we need to handle that. Let me just make sure saveState is called at the right times.
+
+Actually, in confirmLock, after answering, we save state and then advance after 2200ms. If the user reloads during that 2200ms, the state would show the current (about to advance) question with locked: true. That's weird. Let me handle it: on reload, if locked is true but the question hasn't been recorded in history, we should... hmm. Or just accept it — the state will advance or end as appropriate. But the timer won't fire. Let me add a check in boot:
+
+js
+if(saved.locked){
+  // player reloaded while feedback animation was showing
+  // just advance or end based on last history entry
+  // ... complicated. Let me just reset locked state and re-show the question.
+  saved.locked = false;
+  saved.selectedOption = null;
+}
+Hmm, that's not great either. Let me think.
+
+Actually, the simplest fix: don't save locked: true state. Only save before locking and after advancing. So if user reloads mid-feedback, they get the pre-lock state.
+
+But then if they already locked and the answer is correct, we'd want to show them the next question. If they reload mid-advance, they'd see the same question again. That's a minor issue.
+
+Actually let me just handle it: if locked is true on reload and history has the current question answered, advance. Let me not overthink this. Let me just reset the lock state on reload:
+
+js
+// On reload, if locked, reset to allow re-answering
+if(saved.locked){
+  saved.locked = false;
+  saved.selectedOption = null;
+}
+But this means the player could reload to undo a wrong answer. Not ideal but not game-breaking since the history is preserved (they'd have a duplicate entry).
+
+Hmm, let me actually check history:
+
+js
+if(saved.locked){
+  // Check if the current question was already recorded in history
+  const alreadyRecorded = saved.history && saved.history.some(h => h.q === QUESTIONS[saved.currentIndex].id);
+  if(!alreadyRecorded){
+    saved.locked = false;
+    saved.selectedOption = null;
+    saved.hiddenOptions = saved.hiddenOptions || [];
+  }
+  // else, the question was answered but advance didn't happen; replay the advance
+}
+This is getting complex. Let me just accept the simpler approach: on reload, if locked is true, reset it. The user could re-answer the same question. Since we don't save the answer before locking, this is a small exploit but acceptable for an educational game.
+
+Actually wait, we DO save the state in confirmLock before the timeout. So state.locked = true and the question is in history. Let me change the flow:
+
+Instead of saving before the timeout, save after the advance/end. So:
+
+js
+function confirmLock(){
+  closeModal();
+  state.locked = true;
+  // ... show feedback, flash atom ...
+  // don't save yet
+  
+  if(isCorrect){
+    setTimeout(() => {
+      if(lastQuestion){
+        state.score = SCORE_LADDER[14];
+        state.status = 'won';
+        state.finishedAt = new Date().toISOString();
+        saveState();
+        showEndModal('won');
+      } else {
+        state.score = SCORE_LADDER[state.currentIndex];
+        state.currentIndex++;
+        state.stage = QUESTIONS[state.currentIndex].stage;
+        state.selectedOption = null;
+        state.locked = false;
+        state.hiddenOptions = [];
+        saveState();
+        render();
+      }
+    }, 2200);
+  } else {
+    setTimeout(() => {
+      state.score = getSafeScore(state.currentIndex);
+      state.status = 'lost';
+      state.finishedAt = new Date().toISOString();
+      saveState();
+      showEndModal('lost');
+    }, 2200);
+  }
+}
+But wait, we push to history in confirmLock. So if we save after, the history is included. Good.
+
+But if the user closes the tab during the 2200ms, the state isn't saved. Then on reload, they're at the pre-answer state. That means they can re-answer. Again, minor exploit but acceptable.
+
+Hmm, actually, let me just save immediately but mark the question as "being answered" so we can handle on reload.
+
+OK you know what, let me just do it simply:
+
+Save state after locking but before the timeout fires (so history is preserved).
+
+On reload, if locked is true, treat it as if the timeout already fired (advance or end immediately).
+
+Let me add a pendingResult field to state that captures the outcome:
+
+js
+state.pendingResult = {
+  correct: isCorrect,
+  questionId: q.id
+};
+saveState();
+Then on reload, if pendingResult exists:
+
+if correct, advance
+
+if wrong, end
+
+Actually let me just keep it simple. On reload, if locked: true:
+
+js
+// The answer was already submitted; finish processing it
+if(saved.locked){
+  // Check last history entry
+  const last = saved.history[saved.history.length - 1];
+  if(last && last.q === QUESTIONS[saved.currentIndex].id){
+    if(last.correct){
+      // advance or win
+      if(saved.currentIndex >= TOTAL_QUESTIONS - 1){
+        saved.score = SCORE_LADDER[14];
+        saved.status = 'won';
+      } else {
+        saved.score = SCORE_LADDER[saved.currentIndex];
+        saved.currentIndex++;
+        saved.stage = QUESTIONS[saved.currentIndex].stage;
+        saved.selectedOption = null;
+        saved.locked = false;
+        saved.hiddenOptions = [];
+      }
+    } else {
+      saved.score = getSafeScore(saved.currentIndex);
+      saved.status = 'lost';
+    }
+    saved.finishedAt = new Date().toISOString();
+    saveState();
+  }
+}
+This handles the reload-mid-feedback case gracefully. Let me add this to boot.
+
+OK, this is getting quite complex. Let me just code it up and move on.
+
+Let me also handle formatScore:
+
+js
+function formatScore(n){
+  if(n >= 1000000) return '1.000.000';
+  return n.toLocaleString('id-ID');
+}
+Hmm, toLocaleString('id-ID') uses dots for thousands. Good.
+
+Actually let me just use a manual formatter to be safe:
+
+js
+function formatScore(n){
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+OK.
+
+Now let me put it all together. This is a long file. Let me write the complete code.
+
+For the updateLockButton, let me handle the disabled state of the lock button:
+
+js
+function updateLockButton(){
+  const btn = document.getElementById('btnLock');
+  btn.disabled = state.selectedOption === null || state.locked;
+}
+Call this in render and in selectOption.
+
+OK let me now write the entire file.
+
+Actually let me also double-check the audience chart modal:
+
+js
+function showAudienceModal(percents){
+  const letters = ['A','B','C','D'];
+  let chartHtml = '<div class="audience-chart">';
+  for(let i=0;i<4;i++){
+    chartHtml += `
+      <div class="aud-bar">
+        <div class="aud-pct">${percents[i]}%</div>
+        <div class="aud-fill" style="height:${percents[i]}%"></div>
+        <div class="aud-letter">${letters[i]}</div>
+      </div>
+    `;
+  }
+  chartHtml += '</div>';
+  
+  const body = `
+    <p style="text-align:center;font-size:13px;color:#94a3b8">Hasil voting penonton:</p>
+    ${chartHtml}
+  `;
+  showModal('👥 Tanya Penonton', body, [
+    { label: 'Tutup', class: 'btn-primary', fn: closeModal }
+  ]);
+}
+The chart height is 140px, and I'm setting the bar fill height as a percentage of that. But since the parent has height: 100%, and the aud-fill is height: 80%, that would be 80% of the parent's height. That should work if the parent has a defined height.
+
+Let me restructure to make sure heights work:
+
+css
+.audience-chart {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 140px;
+  gap: 8px;
+  padding: 8px 0;
+  position: relative;
+}
+.aud-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  justify-content: flex-end;
+  position: relative;
+}
+.aud-fill {
+  width: 100%;
+  background: linear-gradient(180deg, #60a5fa, #3b82f6);
+  border-radius: 6px 6px 0 0;
+  min-height: 4px;
+  transition: height 0.6s;
+}
+Hmm, the issue is the .aud-fill has height: X% but the parent .aud-bar doesn't have a defined height for the fill to be a % of. Let me restructure:
+
+.aud-bar is a flex column with items at the bottom (justify-content: flex-end). The fill has height as a % of .aud-bar's height. Since .aud-bar has height: 100% of .audience-chart (140px), the fill's % should work.
+
+Actually, flex children with height: X% — the percentage is relative to the parent's height. Since .aud-bar has height: 100% (= 140px minus padding), the fill percentage should be relative to that 140px. Let me verify with actual HTML:
+
+html
+<div class="audience-chart" style="height:140px">
+  <div class="aud-bar" style="height:100%;display:flex;flex-direction:column;justify-content:flex-end">
+    <div class="aud-pct">80%</div>
+    <div class="aud-fill" style="height:80%"></div>
+    <div class="aud-letter">A</div>
+  </div>
+</div>
+The .aud-bar is 140px tall. Its children are: pct text, fill (80% height), letter text. With justify-content: flex-end, they stack at the bottom. The fill's height: 80% would be 80% of 140px = 112px. But the text takes some space too, so the fill might overflow. Hmm.
+
+Let me use a different approach — make the bar chart use grid or explicit bar heights.
+
+Alternative: use .aud-bar as a flex container where the fill is the only flexible item:
+
+css
+.aud-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  height: 100%;
+  position: relative;
+  padding-top: 20px;
+}
+.aud-fill {
+  width: 100%;
+  background: linear-gradient(180deg, #60a5fa, #3b82f6);
+  border-radius: 6px 6px 0 0;
+  transition: height 0.6s;
+}
+Hmm, this is getting complicated. Let me just use fixed pixel heights for the bars, computed from the percentage:
+
+js
+const barMaxHeight = 100; // px
+chartHtml += `<div class="aud-fill" style="height:${Math.max(4, percents[i] / 100 * barMaxHeight)}px"></div>`;
+And set the chart height to accommodate. That should work.
+
+Actually, let me use a different approach: use inline-block with a fixed container height, and the bar's height is set in pixels.
+
+css
+.audience-chart {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 160px;
+  gap: 8px;
+  padding: 8px 0;
+}
+.aud-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.aud-fill {
+  width: 100%;
+  max-width: 50px;
+  background: linear-gradient(180deg, #60a5fa, #3b82f6);
+  border-radius: 6px 6px 0 0;
+  transition: height 0.6s;
+}
+And in HTML:
+
+html
+<div class="aud-fill" style="height:${percents[i] * 1.2}px"></div>
+Where 1.2 is a scaling factor so max is 100 * 1.2 = 120px. The chart is 160px tall, minus some space for the pct and letter labels (about 40px total). Should fit.
+
+Actually let me just use percentages of the container: height: ${percents[i]}%. If the container (audience-chart) has a definite height of 160px, then the aud-bar has height 100% of it (via flex stretch? or explicit?). The aud-fill with height 80% would be 80% of... its parent (aud-bar), which has no explicit height. So it would be auto.
+
+You know what, let me just use vh or percentage of chart directly with a wrapper. Simpler: use fixed pixel heights.
+
+js
+const maxPx = 120;
+chartHtml += `<div class="aud-fill" style="height:${Math.max(6, Math.round(percents[i] / 100 * maxPx))}px"></div>`;
+And set .audience-chart height to be flexible (min-height 160px or so). The bars will be max 120px. Good.
+
+Let me go with that.
+
+OK, let me now write the full file. This is quite long, let me be careful.
+
+One more thing: the "final answer?" confirm modal.
+
+js
+function showConfirmModal(){
+  const letters = ['A','B','C','D'];
+  const q = QUESTIONS[state.currentIndex];
+  const chosen = letters[state.selectedOption];
+  const chosenText = q.options[state.selectedOption];
+  const body = `
+    <p>Apakah Anda yakin dengan jawaban <b>${chosen}. ${chosenText}</b>?</p>
+    <p style="font-size:12px;color:#94a3b8;margin-top:8px">Setelah dikunci, jawaban tidak dapat diubah.</p>
+  `;
+  showModal('🔒 Kunci Jawaban?', body, [
+    { label: '✅ Ya, Kunci!', class: 'btn-primary', fn: confirmLock },
+    { label: 'Batal', class: 'btn-secondary', fn: closeModal }
+  ]);
+}
+Wait, confirmLock should be called, not confirmLock(). In the showModal, I store the fn and call it when the button is clicked. Good.
+
+Let me now define showModal and closeModal:
+
+js
+function showModal(title, bodyHtml, actions){
+  const modal = document.getElementById('modal');
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  const actionsContainer = document.getElementById('modalActions');
+  actionsContainer.innerHTML = '';
+  actions.forEach(a => {
+    const btn = document.createElement('button');
+    btn.className = a.class;
+    btn.textContent = a.label;
+    btn.addEventListener('click', a.fn);
+    actionsContainer.appendChild(btn);
+  });
+  modal.classList.remove('hidden');
+}
+
+function closeModal(){
+  document.getElementById('modal').classList.add('hidden');
+}
+But the modal structure has #modalBody inside #modal-box with class body. Let me adjust:
+
+html
+<div id="modal" class="modal hidden">
+  <div class="modal-box">
+    <h2 id="modalTitle"></h2>
+    <div id="modalBody" class="body"></div>
+    <div id="modalActions" class="modal-actions"></div>
+  </div>
+</div>
+Good.
+
+Now showAudienceModal, showPhoneModal, showConfirmModal, showEndModal, showStartModal, showContinueModal all use showModal.
+
+Let me also add a settings/about option maybe. Nah, keep it focused.
+
+Let me also think about the initial state when starting a new game:
+
+js
+function startNewGame(timerOn){
+  state = {
+    version: 1,
+    player: "Siswa",
+    startedAt: new Date().toISOString(),
+    finishedAt: null,
+    currentIndex: 0,
+    score: 0,
+    stage: 1,
+    lifelines: { fifty: true, audience: true, phone: true },
+    history: [],
+    status: 'in-progress',
+    timerEnabled: timerOn,
+    selectedOption: null,
+    locked: false,
+    hiddenOptions: []
+  };
+  saveState();
+  render();
+}
+Player name — let me add an input field in the start modal, or just use "Siswa". Let me add a simple prompt.
+
+Actually let me add it to the start modal:
+
+html
+<label style="display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:13px">
+  Nama Pemain
+  <input type="text" id="playerInput" placeholder="Nama kamu" maxlength="30" style="padding:8px;border-radius:8px;border:1px solid rgba(96,165,250,0.3);background:rgba(30,41,59,0.6);color:#e8eefc;font-family:inherit">
+</label>
+And in the start action:
+
+js
+const name = document.getElementById('playerInput').value.trim() || 'Siswa';
+OK good.
+
+Let me also add the "walk away" logic and add it to the button:
+
+js
+document.getElementById('btnWalk').addEventListener('click', showWalkAwayConfirm);
+
+function showWalkAwayConfirm(){
+  if(state.locked) return;
+  const currentScore = state.currentIndex > 0 ? SCORE_LADDER[state.currentIndex - 1] : 0;
+  const body = `<p>Yakin ingin berhenti? Anda akan membawa pulang nilai <b>${formatScore(currentScore)}</b>.</p>`;
+  showModal('🚪 Berhenti Bermain?', body, [
+    { label: '✅ Ya, Berhenti', class: 'btn-danger', fn: () => { closeModal(); walkAway(); } },
+    { label: 'Lanjut Main', class: 'btn-secondary', fn: closeModal }
+  ]);
+}
+
+function walkAway(){
+  stopTimer();
+  state.score = state.currentIndex > 0 ? SCORE_LADDER[state.currentIndex - 1] : 0;
+  state.status = 'walked-away';
+  state.finishedAt = new Date().toISOString();
+  saveState();
+  showEndModal('walked-away');
+}
+Hmm, but walkAway should show the end modal. And showEndModal itself might call saveState again? Let me check my showEndModal — it doesn't save state. But walkAway does. OK good.
+
+Wait, actually let me make showEndModal NOT save state, and have the callers save. That's cleaner.
+
+confirmLock (correct path) — save before showEndModal
+
+confirmLock (wrong path) — save before showEndModal
+
+walkAway — save before showEndModal
+
+timeUp — save before showEndModal
+
+Good.
+
+Now let me finalize. Let me write out the complete code.
+
+Wait, I also need to handle the initial empty state for render(). If state is null, render() should not run. Let me guard.
+
+Also on load, if there's no saved state, show the start modal. If there is a saved in-progress state, show continue modal. Good.
+
+Let me also handle the reset button in the header:
+
+js
+document.getElementById('btnReset').addEventListener('click', () => {
+  showModal('↺ Reset Permainan?', '<p>Semua progress akan dihapus. Yakin?</p>', [
+    { label: '🗑 Ya, Reset', class: 'btn-danger', fn: () => {
+      closeModal();
+      stopTimer();
+      clearState();
+      state = null;
+      showStartModal(true);
+    }},
+    { label: 'Batal', class: 'btn-secondary', fn: closeModal }
+  ]);
+});
+Timer button:
+
+js
+document.getElementById('btnTimer').addEventListener('click', () => {
+  if(!state) return;
+  state.timerEnabled = !state.timerEnabled;
+  saveState();
+  render();
+});
+Download button:
+
+js
+document.getElementById('btnDownload').addEventListener('click', () => {
+  if(!state) return;
+  downloadJSON();
+});
+OK, one more thing: I should update the meta display when the state changes. In render, I update stageBadge and qBadge and scoreVal.
+
+But wait, render() at the top uses QUESTIONS[state.currentIndex]. If currentIndex is 15 (past the end), that would be undefined. But we handle the win case before advancing. So currentIndex never exceeds 14. Good.
+
+Actually, in the "correct" path, after advancing on question 15:
+
+currentIndex goes from 14 to 15
+
+state.stage = QUESTIONS[15].stage → undefined error!
+
+Let me handle this:
+
+js
+if(state.currentIndex >= TOTAL_QUESTIONS - 1){
+  // Won
+  ...
+} else {
+  state.currentIndex++;
+  state.stage = QUESTIONS[state.currentIndex].stage;
+  ...
+}
+Yes, I already have the if check. Good.
+
+But in render(), QUESTIONS[state.currentIndex] — for the "won" state, we don't call render, we go to end modal. Good.
+
+But in the "lost" state, we also don't call render. Good.
+
+For "in-progress" states, currentIndex is 0-14. Good.
+
+OK, let me now write the complete code.
+
+Hmm, one more: how do we handle the timer display during feedback? After locking, we call stopTimer() in confirmLock. Good. And the timer bar should hide.
+
+Actually, in confirmLock, I don't call stopTimer. Let me add it:
+
+js
+function confirmLock(){
+  closeModal();
+  stopTimer();
+  document.getElementById('timerBar').classList.remove('active');
+  document.getElementById('timerText').classList.remove('active');
+  state.locked = true;
+  // ...
+}
+OK.
+
+Now for the Three.js init. Let me be careful. The canvas should be fixed behind everything.
+
+Let me also add a fallback in case WebGL fails:
+
+js
+function initThree(){
+  const canvas = document.getElementById('bg');
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  } catch(e){
+    canvas.style.display = 'none';
+    document.body.style.background = 'linear-gradient(135deg, #0a0e1a, #1e1b4b, #0a0e1a)';
+    return;
+  }
+  // ...
+}
+Also add a check for typeof THREE === 'undefined':
+
+js
+function initThree(){
+  if(typeof THREE === 'undefined'){
+    // fallback
+    document.getElementById('bg').style.display = 'none';
+    document.body.style.background = 'linear-gradient(135deg, #0a0e1a, #1e1b4b, #0a0e1a)';
+    return;
+  }
+  // ...
+}
+Good.
+
+Let me now write the entire thing. I'll be careful with syntax.
+
+Actually let me also reconsider: for the walk away score, SCORE_LADDER[state.currentIndex - 1] — this is the score from the last correctly answered question. For currentIndex=5 (on Q6), that's SCORE_LADDER[4]=1000. Good.
+
+But what if the player is on Q1 (currentIndex=0) and walks away? Score should be 0. state.currentIndex - 1 = -1, SCORE_LADDER[-1] = undefined. My code handles: state.currentIndex > 0 ? SCORE_LADDER[state.currentIndex - 1] : 0. Good.
+
+OK, writing now.
+
+One more thing about the "50:50" — when used, we should also make sure the lock button state is updated. Since hiding options doesn't change selectedOption unless it was a hidden one, I need to update the lock button. Let me call updateLockButton after any change.
+
+Actually in renderOptions, the buttons are re-rendered. But state.selectedOption might have been cleared. Let me call updateLockButton() after renderOptions() in useFifty.
+
+Alright, let me write the code now.
+
+Actually, thinking about it more, I realize I should simplify the renderOptions — it currently disables options if state.locked || hidden. That's fine.
+
+But then in selectOption, we check if(state.locked) return; and if(hidden) return;. But since the buttons are disabled, they won't fire clicks anyway. So it's redundant but harmless.
+
+OK, code time. Let me write it all out.
+
+Final structure:
+
+html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a0e1a">
+<title>💎 Termokimia Millionaire — Kelas XI</title>
+<style>/* ... */</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div id="app">
+  <header>...</header>
+  <main>...</main>
+</div>
+<div id="modal" class="modal hidden">...</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
+<script>/* ... */</script>
+</body>
+</html>
+Let me write it all out now.
+
+Also, I should double check the format of the score display. The user's prompt shows values like "1.000.000". Using formatScore(1000000) → "1.000.000" with my formatter. Good.
+
+Let me also add a Rp prefix maybe? The prompt shows "Rp" in one place but the score ladder is just numbers. Let me just show the number.
+
+Actually the prompt says "indikator skor" — indicator of score. Let me show "NILAI" label and the number. Good.
+
+OK, let me write.
+
+For the questions, let me make sure all answerIndex values match my a field:
+
+Q1: ansIdx=1, a=1^90=91 ✓
+
+Q2: ansIdx=1, a=91 ✓
+
+Q3: ansIdx=1, a=91 ✓
+
+Q4: ansIdx=2, a=2^90=88 ✓
+
+Q5: ansIdx=1, a=91 ✓
+
+Q6: ansIdx=1, a=91 ✓
+
+Q7: ansIdx=0, a=0^90=90 ✓
+
+Q8: ansIdx=1, a=91 ✓
+
+Q9: ansIdx=1, a=91 ✓
+
+Q10: ansIdx=0, a=90 ✓
+
+Q11: ansIdx=1, a=91 ✓
+
+Q12: ansIdx=0, a=90 ✓
+
+Q13: ansIdx=2, a=88 ✓
+
+Q14: ansIdx=1, a=91 ✓
+
+Q15: ansIdx=1, a=91 ✓
+
+Great.
+
+And the decode is q.a ^ 0x5A. 91 ^ 90 = 1. 88 ^ 90 = 2. 90 ^ 90 = 0. ✓
+
+Let me write the code now. Final.
+
+I also want to ensure the layout on mobile is good. The #app has min-height: 100vh and is a flex column with gap. The main content should fit.
+
+For very small screens (320px wide), let me make sure the font sizes are ok. Should be fine.
+
+Actually, let me also add overflow-y: auto to #app to ensure scrolling if needed.
+
+Also, I notice the header has backdrop-filter which may cause issues on some devices. Let me add fallback via @supports.
+
+Actually, let me just use a solid-ish background with transparency. If backdrop-filter isn't supported, it'll just be slightly less blurry. Fine.
+
+OK, writing the final code now.
+
+One more consideration: the "Unduh JSON" button in the header. It should be disabled when there's no state. Or it can just do nothing. Let me leave it enabled and guard with if(!state) return;.
+
+Now let me write the complete file.
+
+For the modal body rendering with template literals, I need to be careful with ${}. Let me make sure all template literals are correct.
+
+Let me also add a final boot() call at the end of the script.
+
+Alright, here we go. Writing the final code now.
+
+Actually one more thing. When the player wins (answers Q15 correctly), the score should be SCORE_LADDER[14] = 1,000,000. In my confirmLock code:
+
+js
+if(state.currentIndex >= TOTAL_QUESTIONS - 1){
+  state.score = SCORE_LADDER[14];  // 1,000,000
+  ...
+}
+But state.score was already SCORE_LADDER[13] = 500,000 from answering Q14 correctly. Setting it to SCORE_LADDER[14] on Q15 win is correct. ✓
+
+For the "correct" non-win path:
+
+js
+state.score = SCORE_LADDER[state.currentIndex];  // score for the just-answered question
+state.currentIndex++;
+At Q1 (currentIndex 0), score = SCORE_LADDER[0] = 100. Then currentIndex becomes 1. ✓
+
+At Q5 (currentIndex 4), score = SCORE_LADDER[4] = 1000 (safe point). Then currentIndex becomes 5. ✓
+
+Good.
+
+For the walk-away, at currentIndex 5 (on Q6), score = SCORE_LADDER[4] = 1000. ✓
+
+Alright, let me finalize.
+
+One more: when the player wins, do I also need to update score in the display before showing end modal? The end modal shows the score. Since I'm setting state.score = 1000000, the modal will show it. Good. But the header score might not update. Let me update document.getElementById('scoreVal') explicitly, or just rely on the end modal. Since the modal is what matters, that's fine.
+
+Let me write the code.
+
+Also, a small detail: formatScore(0) should return "0". My regex-based formatter: "0".replace(/\B(?=(\d{3})+(?!\d))/g, '.') → "0". Good. "1000000" → "1.000.000". Good.
+
+OK here we go, writing the complete file now.
+
+For the confirmLock flow, I need to make sure I call stopTimer and hide the timer bar before showing feedback.
+
+js
+function confirmLock(){
+  closeModal();
+  stopTimer();
+  document.getElementById('timerBar').classList.remove('active');
+  document.getElementById('timerText').classList.remove('active');
+  
+  state.locked = true;
+  const q = QUESTIONS[state.currentIndex];
+  const chosen = state.selectedOption;
+  const isCorrect = chosen === q.answerIndex;
+  
+  // re-render options with correct/wrong classes
+  renderOptionsLocked(isCorrect, chosen, q.answerIndex);
+  
+  // feedback
+  const fb = document.getElementById('feedback');
+  fb.innerHTML = (isCorrect ? '✅ Benar! ' : '❌ Salah. ') + q.explanation;
+  fb.className = 'feedback show ' + (isCorrect ? 'correct' : 'wrong');
+  
+  // atom flash
+  flashAtom(isCorrect ? 0x22c55e : 0xef4444);
+  
+  // record history
+  const timeUsed = state.timerEnabled ? Math.round((TIME_LIMIT - timeLeft) * 1000) : 0;
+  state.history.push({
+    q: q.id,
+    chosen: ['A','B','C','D'][chosen],
+    correct: isCorrect,
+    timeMs: timeUsed
+  });
+  
+  // update lock/walk buttons
+  document.getElementById('btnLock').disabled = true;
+  document.getElementById('btnWalk').disabled = true;
+  
+  if(isCorrect){
+    setTimeout(() => {
+      if(state.currentIndex >= TOTAL_QUESTIONS - 1){
+        state.score = SCORE_LADDER[14];
+        state.status = 'won';
+        state.finishedAt = new Date().toISOString();
+        saveState();
+        showEndModal('won');
+      } else {
+        state.score = SCORE_LADDER[state.currentIndex];
+        state.currentIndex++;
+        state.stage = QUESTIONS[state.currentIndex].stage;
+        state.selectedOption = null;
+        state.locked = false;
+        state.hiddenOptions = [];
+        saveState();
+        render();
+      }
+    }, 2400);
+  } else {
+    setTimeout(() => {
+      state.score = getSafeScore(state.currentIndex);
+      state.status = 'lost';
+      state.finishedAt = new Date().toISOString();
+      saveState();
+      showEndModal('lost');
+    }, 2400);
+  }
+}
+And renderOptionsLocked:
+
+js
+function renderOptionsLocked(isCorrect, chosen, correctIdx){
+  const buttons = document.querySelectorAll('.option');
+  buttons.forEach((btn, i) => {
+    btn.disabled = true;
+    if(i === correctIdx) btn.classList.add('correct');
+    if(i === chosen && !isCorrect) btn.classList.add('wrong');
+  });
+}
+Hmm, but for the 50:50 case, hidden options are already disabled and have the hidden-opt class. Adding correct/wrong classes on top might look weird. Let me just skip the correct class on hidden options:
+
+Actually, if the correct answer is hidden (shouldn't happen since 50:50 never hides the correct answer), we'd have an issue. But it can't happen. So fine.
+
+OK, final code time.
+
+Let me also double check the audience modal. I use Math.round which might make percentages not sum to 100. Let me fix:
+
+js
+function useAudience(){
+  if(!state.lifelines.audience || state.locked) return;
+  state.lifelines.audience = false;
+  const q = QUESTIONS[state.currentIndex];
+  const correctBias = 0.7 + Math.random() * 0.15; // 70-85%
+  const percents = [0,0,0,0];
+  percents[q.answerIndex] = Math.round(correctBias * 100);
+  
+  const remaining = 100 - percents[q.answerIndex];
+  const others = [0,1,2,3].filter(i => i !== q.answerIndex);
+  // distribute remaining among others with randomness
+  const weights = [Math.random(), Math.random(), Math.random()];
+  const wSum = weights[0]+weights[1]+weights[2];
+  const shares = weights.map(w => Math.round(remaining * w / wSum));
+  // fix sum
+  const shareSum = shares.reduce((a,b)=>a+b,0);
+  shares[0] += remaining - shareSum;
+  
+  percents[others[0]] = shares[0];
+  percents[others[1]] = shares[1];
+  percents[others[2]] = shares[2];
+  
+  saveState();
+  renderLifelines();
+  showAudienceModal(percents);
+}
+OK that works.
+
+Now for the bar chart, I need to scale the bar height. Max percentage is 100, chart height should accommodate.
+
+js
+const maxPx = 120;
+const h = Math.max(6, Math.round(percents[i] / 100 * maxPx));
+chartHtml += `<div class="aud-fill" style="height:${h}px"></div>`;
+And chart height: 160px (with 120px for bar + 40px for labels). Let me set .audience-chart { min-height: 160px }.
+
+Hmm, if the bar is 120px and there's the pct text (above) and letter (below), the total might exceed 160. Let me set the chart to 180px and the bar max to 110px. Actually let me just use flex layout and let it work out.
+
+Let me just set:
+
+css
+.audience-chart { display:flex; justify-content:space-around; align-items:flex-end; gap:8px; padding:8px 0; height:auto; }
+.aud-bar { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+And for each bar:
+
+html
+<div class="aud-bar">
+  <div class="aud-pct">80%</div>
+  <div class="aud-fill" style="height:96px"></div>
+  <div class="aud-letter">A</div>
+</div>
+Where 96px = 80% * 120px. The aud-bar's height is determined by content. All aud-bars have the same total content height because they're in a flex row with align-items: flex-end. So the tallest bar determines the row height.
+
+Hmm, but if bar A is 96px and bar B is 12px, they'd both have the pct and letter text, but B's fill is smaller, so B would be shorter. With align-items: flex-end, they'd align at the bottom.
+
+That's fine — the bars will have different heights, aligned at the bottom. Good.
+
+OK, let me just go with this. Writing the final code.
+
+Alright, I'll write the complete file now. Let me be very careful with syntax.
+
+Let me also reconsider the initial render. When boot() is called:
+
+initThree() — sets up Three.js
+
+Check for saved state
+
+Show appropriate modal
+
+But the DOM needs to be ready first. Since the script is at the end of body, it should be fine.
+
+OK, writing.
+
+For the "player" name, let me default to "Siswa" if not provided.
+
+Also, the download filename should have the player name. Good.
+
+Let me finalize the code now. This is going to be long.
+
+One more: after the player wins or loses, the "Walk Away" button should be disabled. And the "Lock" button. And the lifelines. Since we call showEndModal, the modal covers everything. When they click "Main Lagi", we reset. Good.
+
+Let me also handle the case where the player closes the tab mid-game. The state is saved. On reopen, we show the continue modal. Good.
+
+OK let me write the final code. Here we go.
+
+Actually, one small issue: in render(), I call startTimer() which resets the timer. But if the player just used a lifeline, I re-render, which restarts the timer. That's not ideal — the timer should continue.
+
+Let me handle this: render() should only start the timer if it's not already running. Or better, separate the render into "full render" (new question) vs "partial render" (lifeline update).
+
+Let me refactor:
+
+js
+function renderNewQuestion(){
+  // called when a new question is shown
+  render();
+  if(state.timerEnabled) startTimer();
+}
+
+function render(){ // updates UI without touching timer
+  // ...
+}
+Or add a flag to render:
+
+js
+function render(startTimerFlag = true){
+  // ...
+  if(startTimerFlag && state.timerEnabled && !state.locked){
+    startTimer();
+  }
+}
+And call render(false) for lifeline updates.
+
+Hmm, but the current render() structure is doing a lot. Let me just separate:
+
+js
+function render(startTimerFlag = true){
+  // header
+  // question
+  // options
+  // lifelines
+  // controls
+  // timer classes
+  if(startTimerFlag && state.timerEnabled && !state.locked){
+    startTimer();
+  } else if(!state.timerEnabled || state.locked){
+    stopTimer();
+    // hide timer bar
+  }
+}
+Hmm, but if we call render(false) and timer is running, we don't want to stop it. Let me be explicit:
+
+js
+function render(startTimerFlag = true){
+  // ... UI updates ...
+  
+  const showTimer = state.timerEnabled && !state.locked;
+  document.getElementById('timerBar').classList.toggle('active', showTimer);
+  document.getElementById('timerText').classList.toggle('active', showTimer);
+  
+  if(showTimer && startTimerFlag){
+    startTimer();
+  } else if(!showTimer){
+    stopTimer();
+  }
+}
+This way, render(false) won't restart the timer but will keep it running if it's active. render(true) will restart the timer.
+
+For lifelines, use render(false).
+For new question / start, use render(true).
+
+Good.
+
+Let me finalize.
+
+Also, when state transitions from "in-progress" to "won/lost", we show the end modal and don't call render. The state's timer might still be running if we didn't stop it — but we do stop it in confirmLock and showEndModal.
+
+Actually, showEndModal calls stopTimer(). Good.
+
+OK, writing the final code now.
+
+Actually, I just realized: the "Walk Away" button should be available even after the timer runs out (which sets locked). Hmm, but if the timer runs out, the game ends. So walk away is not relevant. OK.
+
+But what about after locking but before the state advances? The "Walk Away" button should probably be disabled during the feedback period. My code disables it in confirmLock. Good.
+
+Alright, writing now. For real this time.
+
+Let me also handle: when a lifeline is used, we should re-check the lock button state (in case the selected option was hidden).
+
+In useFifty:
+
+js
+if(state.hiddenOptions.includes(state.selectedOption)){
+  state.selectedOption = null;
+}
+But state.selectedOption could be null. [].includes(null) returns false. So if(state.hiddenOptions.includes(null)) is false. Good.
+
+Then updateLockButton() should be called. Or since we call renderOptions() which re-renders the buttons, and the selected one is no longer selected (because we cleared it), the lock button state might be wrong.
+
+Wait, renderOptions re-creates the buttons. The selected class is applied based on state.selectedOption === i. If we set state.selectedOption = null, no button will be selected. And the lock button...
+
+Let me update the lock button in useFifty:
+
+js
+document.getElementById('btnLock').disabled = state.selectedOption === null || state.locked;
+Yes, call this after any option change.
+
+OK, writing now. Final.
+
+Oh wait, one more thing. In selectOption, we should re-render just the option styles (not full render). Let me create a specific function:
+
+js
+function selectOption(i){
+  if(state.locked) return;
+  if(state.hiddenOptions && state.hiddenOptions.includes(i)) return;
+  state.selectedOption = i;
+  // update button styles
+  document.querySelectorAll('.option').forEach((btn, idx) => {
+    btn.classList.toggle('selected', idx === i);
+    if(idx === i) btn.disabled = false; // ensure it's not disabled
+  });
+  updateLockButton();
+  // save state (selection, though maybe not necessary)
+  // Actually, let's not save on selection — only on lock
+}
+Hmm, should I save selection? If the player selects and reloads, should the selection persist? Probably not important. Let me not save on selection. Only save on lock.
+
+But then reload after selecting loses the selection. That's fine.
+
+OK. updateLockButton:
+
+js
+function updateLockButton(){
+  document.getElementById('btnLock').disabled = state.selectedOption === null || state.locked;
+}
+Call from selectOption, render, and useFifty.
+
+OK, now writing.
+
+Let me also make sure state.hiddenOptions is initialized. In startNewGame, yes. In the advance code, yes (state.hiddenOptions = []). In the continue case, we should ensure it's set. Let me add:
+
+js
+saved.hiddenOptions = saved.hiddenOptions || [];
+saved.selectedOption = saved.selectedOption ?? null;
+saved.locked = saved.locked ?? false;
+saved.timerEnabled = saved.timerEnabled ?? true;
+In the boot's continue path.
+
+Alright, final code. Writing now.
+
+I'll make the file as clean as possible. Let me go.
+
+Berikut file index.html final yang lengkap dan siap dipakai. Simpan sebagai index.html, buka di browser HP/desktop (atau unggah ke GitHub Pages), dan game langsung berjalan tanpa build tools.
+
+html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a0e1a">
+<title>💎 Termokimia Millionaire — Kelas XI</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#0a0e1a;color:#e8eefc;overflow-x:hidden}
+  body{min-height:100vh;display:flex;justify-content:center;position:relative;background:radial-gradient(circle at 50% 0%,#131a30 0%,#0a0e1a 60%)}
+  #bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none}
+  #app{position:relative;z-index:1;width:100%;max-width:520px;padding:12px;display:flex;flex-direction:column;gap:10px;min-height:100vh}
+  header{background:rgba(20,27,48,.78);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(96,165,250,.22);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+  .brand{font-size:15px;font-weight:800;background:linear-gradient(90deg,#60a5fa,#a78bfa,#fbbf24);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:.3px}
+  .meta{display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;gap:6px}
+  .meta span{background:rgba(59,130,246,.15);padding:2px 8px;border-radius:999px;border:1px solid rgba(59,130,246,.3);white-space:nowrap}
+  .score-row{display:flex;align-items:center;gap:8px}
+  .score{flex:1;font-size:19px;font-weight:800;color:#fbbf24;text-shadow:0 0 12px rgba(251,191,36,.4);display:flex;align-items:baseline;gap:6px}
+  .score small{font-size:10px;color:#94a3b8;font-weight:600;letter-spacing:.5px}
+  .score-row button{background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.35);color:#93c5fd;border-radius:10px;padding:6px 9px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s;min-width:36px}
+  .score-row button:active{transform:scale(.94);background:rgba(59,130,246,.3)}
+  main{display:flex;flex-direction:column;gap:10px}
+  .timer-bar{width:100%;height:6px;background:rgba(148,163,184,.2);border-radius:999px;overflow:hidden;display:none}
+  .timer-bar.active{display:block}
+  #timerFill{height:100%;width:100%;background:linear-gradient(90deg,#22c55e,#eab308,#ef4444);transition:width .1s linear}
+  .card{background:rgba(20,27,48,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(96,165,250,.22);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+  .timer-text{font-size:11px;color:#94a3b8;text-align:right;display:none}
+  .timer-text.active{display:block}
+  #questionText{font-size:14.5px;line-height:1.55;color:#e8eefc;min-height:62px;font-weight:500}
+  .options{display:flex;flex-direction:column;gap:8px}
+  .option{display:flex;align-items:center;gap:10px;background:rgba(30,41,59,.6);border:1px solid rgba(96,165,250,.22);border-radius:12px;padding:11px;color:#e8eefc;font-family:inherit;font-size:13.5px;text-align:left;cursor:pointer;transition:all .15s;width:100%}
+  .option .letter{flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(96,165,250,.15);border:1px solid rgba(96,165,250,.35);font-weight:800;color:#93c5fd;font-size:13px}
+  .option .text{flex:1;line-height:1.4}
+  .option.selected{background:rgba(59,130,246,.28);border-color:#60a5fa;box-shadow:0 0 0 1px #60a5fa,0 0 16px rgba(96,165,250,.3)}
+  .option.selected .letter{background:#3b82f6;color:#fff;border-color:#3b82f6}
+  .option.correct{background:rgba(34,197,94,.25);border-color:#22c55e;box-shadow:0 0 0 1px #22c55e,0 0 16px rgba(34,197,94,.35);animation:pulseCorrect .5s}
+  .option.correct .letter{background:#22c55e;color:#fff;border-color:#22c55e}
+  .option.wrong{background:rgba(239,68,68,.25);border-color:#ef4444;animation:shake .4s}
+  .option.wrong .letter{background:#ef4444;color:#fff;border-color:#ef4444}
+  .option.hidden-opt{opacity:.15;pointer-events:none;filter:grayscale(1)}
+  .option:disabled{cursor:default}
+  @keyframes pulseCorrect{0%{transform:scale(1)}50%{transform:scale(1.02)}100%{transform:scale(1)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+  .feedback{display:none;font-size:12.5px;line-height:1.5;padding:10px 12px;border-radius:10px;animation:fadeIn .3s}
+  .feedback.show{display:block}
+  .feedback.correct{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.4);color:#86efac}
+  .feedback.wrong{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);color:#fca5a5}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+  .lifelines{display:flex;gap:8px}
+  .lifeline{flex:1;background:rgba(20,27,48,.7);border:1px solid rgba(96,165,250,.25);border-radius:12px;padding:9px 4px;color:#93c5fd;font-family:inherit;font-size:10.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:all .15s;font-weight:600}
+  .lifeline .icon{font-size:17px}
+  .lifeline:disabled{opacity:.3;cursor:not-allowed;filter:grayscale(1)}
+  .lifeline:not(:disabled):active{transform:scale(.96);background:rgba(59,130,246,.2)}
+  .controls{display:flex;gap:8px}
+  .controls button{flex:1;padding:12px;border-radius:12px;border:1px solid;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
+  #btnLock{background:linear-gradient(135deg,#3b82f6,#2563eb);border-color:#60a5fa;color:#fff;box-shadow:0 4px 12px rgba(59,130,246,.3)}
+  #btnLock:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+  #btnWalk{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#fca5a5;max-width:130px}
+  #btnWalk:disabled{opacity:.4;cursor:not-allowed}
+  .controls button:active:not(:disabled){transform:scale(.98)}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .2s;overflow-y:auto}
+  .modal.hidden{display:none}
+  .modal-box{background:#141b30;border:1px solid rgba(96,165,250,.3);border-radius:18px;padding:18px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:12px;animation:popIn .25s;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  @keyframes popIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+  .modal-box h2{font-size:17px;color:#fbbf24;text-align:center;line-height:1.3}
+  .modal-box .body{font-size:13.5px;line-height:1.55;color:#cbd5e1}
+  .modal-actions{display:flex;flex-direction:column;gap:8px}
+  .modal-actions button{padding:11px;border-radius:12px;border:1px solid;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;transition:all .15s}
+  .btn-primary{background:linear-gradient(135deg,#3b82f6,#2563eb);border-color:#60a5fa;color:#fff}
+  .btn-secondary{background:rgba(148,163,184,.15);border-color:rgba(148,163,184,.4);color:#cbd5e1}
+  .btn-danger{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#fca5a5}
+  .modal-actions button:active{transform:scale(.97)}
+  .audience-chart{display:flex;justify-content:space-around;align-items:flex-end;gap:8px;padding:8px 0;min-height:150px}
+  .aud-bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .aud-fill{width:100%;max-width:52px;background:linear-gradient(180deg,#60a5fa,#3b82f6);border-radius:6px 6px 0 0;transition:height .6s cubic-bezier(.34,1.56,.64,1)}
+  .aud-pct{font-size:11px;font-weight:800;color:#93c5fd}
+  .aud-letter{font-size:12px;font-weight:800;color:#cbd5e1}
+  .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+  .summary-item{background:rgba(30,41,59,.6);border:1px solid rgba(96,165,250,.2);border-radius:10px;padding:10px;text-align:center}
+  .summary-item .label{font-size:10px;color:#94a3b8;letter-spacing:.3px}
+  .summary-item .value{font-size:15px;font-weight:800;color:#e8eefc;margin-top:2px}
+  input[type=text]{padding:9px;border-radius:10px;border:1px solid rgba(96,165,250,.3);background:rgba(30,41,59,.6);color:#e8eefc;font-family:inherit;font-size:13px;width:100%}
+  input[type=text]:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 2px rgba(59,130,246,.25)}
+  .check-row{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px;cursor:pointer}
+  .check-row input{width:16px;height:16px;accent-color:#3b82f6}
+  .hint{font-size:11px;color:#94a3b8;margin-top:6px;line-height:1.4}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<div id="app">
+  <header>
+    <div class="brand">💎 Termokimia Millionaire</div>
+    <div class="meta">
+      <span id="stageBadge">Stage 1</span>
+      <span id="qBadge">Soal 1/15</span>
+    </div>
+    <div class="score-row">
+      <div class="score"><small>NILAI</small><span id="scoreVal">0</span></div>
+      <button id="btnTimer" title="Toggle timer">⏱</button>
+      <button id="btnDownload" title="Unduh JSON">⬇</button>
+      <button id="btnReset" title="Reset">↺</button>
+    </div>
+  </header>
+
+  <main id="main">
+    <div id="timerBar" class="timer-bar"><div id="timerFill"></div></div>
+    <div class="card">
+      <div id="timerText" class="timer-text"></div>
+      <p id="questionText">Memuat soal…</p>
+      <div id="options" class="options"></div>
+      <div id="feedback" class="feedback"></div>
+    </div>
+    <div id="lifelines" class="lifelines"></div>
+    <div class="controls">
+      <button id="btnLock" disabled>🔒 Kunci Jawaban</button>
+      <button id="btnWalk">🚪 Berhenti</button>
+    </div>
+  </main>
+</div>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-box">
+    <h2 id="modalTitle"></h2>
+    <div id="modalBody" class="body"></div>
+    <div id="modalActions" class="modal-actions"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
+<script>
+/* =========================================================
+   KONSTANTA GAME
+   ========================================================= */
+const TOTAL_QUESTIONS = 15;
+const TIME_LIMIT = 45; // detik
+const SCORE_LADDER = [100,200,300,500,1000,2000,4000,8000,16000,32000,64000,125000,250000,500000,1000000];
+const SAFE_POINTS = [4,9,14]; // indeks soal (0-based) yang jadi safe point
+const STORAGE_KEY = 'termokimia_millionaire_v1';
+const OBF_KEY = 0x5A;
+
+/* =========================================================
+   BANK SOAL TERMOKIMIA KELAS XI (15 soal)
+   Field `a` = answerIndex ter-obfuscate (XOR 0x5A)
+   ========================================================= */
+const QUESTIONS_RAW = [
+  // ---------- STAGE 1 : Konsep Dasar ----------
+  { id:1, stage:1, level:"mudah",
+    question:"Pada reaksi eksoterm, kalor berpindah dari ...",
+    options:["lingkungan ke sistem","sistem ke lingkungan","sistem ke sistem","lingkungan ke lingkungan"],
+    a: 0x5B, // answerIndex 1
+    explanation:"Reaksi eksoterm melepaskan kalor dari sistem ke lingkungan sehingga suhu lingkungan naik dan ΔH bernilai negatif." },
+  { id:2, stage:1, level:"mudah",
+    question:"Pada reaksi endoterm, tanda perubahan entalpi (ΔH) adalah ...",
+    options:["negatif","positif","nol","tidak tentu"],
+    a: 0x5B, // 1
+    explanation:"Reaksi endoterm menyerap kalor sehingga entalpi sistem bertambah dan ΔH bertanda positif." },
+  { id:3, stage:1, level:"mudah",
+    question:"Entalpi (H) didefinisikan sebagai ...",
+    options:["kalor reaksi pada volume tetap","jumlah energi total sistem pada tekanan tetap","energi kinetik rata-rata molekul","energi ikatan rata-rata molekul"],
+    a: 0x5B, // 1
+    explanation:"Entalpi adalah jumlah energi total (energi dalam + kerja) sistem pada tekanan tetap." },
+  { id:4, stage:1, level:"sedang",
+    question:"Ketika reaksi eksoterm berlangsung di dalam gelas kimia, suhu lingkungan akan ...",
+    options:["turun","tetap","naik","tidak terpengaruh"],
+    a: 0x58, // 2
+    explanation:"Karena sistem melepaskan kalor ke lingkungan, energi lingkungan bertambah sehingga suhunya naik." },
+  { id:5, stage:1, level:"sedang",
+    question:"Diketahui: 2H₂(g) + O₂(g) → 2H₂O(l) ΔH = -572 kJ. Pernyataan yang benar adalah ...",
+    options:["reaksi menyerap 572 kJ kalor","pembentukan 2 mol H₂O melepaskan 572 kJ kalor","reaksi berlangsung endoterm","ΔH bernilai positif karena membentuk air"],
+    a: 0x5B, // 1
+    explanation:"ΔH negatif menandakan reaksi eksoterm; pembentukan 2 mol air melepaskan 572 kJ kalor." },
+
+  // ---------- STAGE 2 : Perhitungan ----------
+  { id:6, stage:2, level:"sedang",
+    question:"100 g air dipanaskan dari 25 °C menjadi 75 °C (c = 4,2 J/g·°C). Kalor yang diserap air adalah ...",
+    options:["2.100 J","21.000 J","210.000 J","21 J"],
+    a: 0x5B, // 1
+    explanation:"q = m·c·ΔT = 100 × 4,2 × (75 − 25) = 21.000 J = 21 kJ." },
+  { id:7, stage:2, level:"sedang",
+    question:"50 g logam menyerap kalor 2.300 J sehingga suhunya naik 100 °C. Kalor jenis logam tersebut adalah ...",
+    options:["0,46 J/g·°C","1,15 J/g·°C","4,6 J/g·°C","0,23 J/g·°C"],
+    a: 0x5A, // 0
+    explanation:"c = q / (m·ΔT) = 2.300 / (50 × 100) = 0,46 J/g·°C." },
+  { id:8, stage:2, level:"sedang",
+    question:"Kalorimeter menyerap 420 J ketika suhunya naik 14 °C. Kapasitas kalor kalorimeter adalah ...",
+    options:["14 J/°C","30 J/°C","60 J/°C","5.880 J/°C"],
+    a: 0x5B, // 1
+    explanation:"C = q / ΔT = 420 / 14 = 30 J/°C." },
+  { id:9, stage:2, level:"sulit",
+    question:"Hukum Hess menyatakan bahwa perubahan entalpi suatu reaksi ...",
+    options:["bergantung pada jalur reaksi","hanya bergantung pada keadaan awal dan akhir","selalu bernilai nol","tidak dapat dihitung dari reaksi lain"],
+    a: 0x5B, // 1
+    explanation:"Hukum Hess: ΔH reaksi hanya bergantung pada keadaan awal dan akhir, tidak pada jalur reaksi." },
+  { id:10, stage:2, level:"sulit",
+    question:"200 mL air (ρ = 1 g/mL) mengalami kenaikan suhu 5 °C setelah reaksi (c = 4,2 J/g·°C). Kalor reaksi yang menyertai adalah ...",
+    options:["4.200 J","4.000 J","840 J","42.000 J"],
+    a: 0x5A, // 0
+    explanation:"m = ρ·V = 200 g; q = m·c·ΔT = 200 × 4,2 × 5 = 4.200 J." },
+
+  // ---------- STAGE 3 : Aplikasi & Analisis ----------
+  { id:11, stage:3, level:"sulit",
+    question:"Diketahui ΔHf° H₂O(l) = -286 kJ/mol. Entalpi pembentukan 2 mol H₂O(l) adalah ...",
+    options:["-286 kJ","-572 kJ","+286 kJ","+572 kJ"],
+    a: 0x5B, // 1
+    explanation:"Entalpi pembentukan bersifat ekstensif: 2 × (−286) = −572 kJ." },
+  { id:12, stage:3, level:"sulit",
+    question:"Diketahui energi ikatan: H–H = 436, Cl–Cl = 242, H–Cl = 431 kJ/mol. ΔH reaksi H₂ + Cl₂ → 2HCl adalah ...",
+    options:["-184 kJ","+184 kJ","-247 kJ","+247 kJ"],
+    a: 0x5A, // 0
+    explanation:"ΔH = ΣE ikatan putus − ΣE ikatan terbentuk = (436+242) − 2(431) = −184 kJ." },
+  { id:13, stage:3, level:"sulit",
+    question:"Pada diagram tingkat energi reaksi eksoterm, posisi reaktan terhadap produk adalah ...",
+    options:["lebih rendah dari produk","sama dengan produk","lebih tinggi dari produk","tidak dapat ditentukan"],
+    a: 0x58, // 2
+    explanation:"Reaksi eksoterm melepaskan energi sehingga entalpi reaktan > entalpi produk." },
+  { id:14, stage:3, level:"sulit",
+    question:"Diketahui: A → B ΔH = -100 kJ; B → C ΔH = +50 kJ. Menurut Hukum Hess, ΔH reaksi A → C adalah ...",
+    options:["-150 kJ","-50 kJ","+50 kJ","+150 kJ"],
+    a: 0x5B, // 1
+    explanation:"ΔH(A→C) = ΔH(A→B) + ΔH(B→C) = −100 + 50 = −50 kJ." },
+  { id:15, stage:3, level:"sulit",
+    question:"Pembakaran CH₄: CH₄(g) + 2O₂(g) → CO₂(g) + 2H₂O(l) ΔH = -890 kJ. Kalor yang dilepas pada pembakaran 0,5 mol CH₄ adalah ...",
+    options:["890 kJ","445 kJ","1.780 kJ","222,5 kJ"],
+    a: 0x5B, // 1
+    explanation:"0,5 mol × 890 kJ/mol = 445 kJ kalor dilepas." }
+];
+
+const QUESTIONS = QUESTIONS_RAW.map(q => ({
+  id: q.id,
+  stage: q.stage,
+  level: q.level,
+  question: q.question,
+  options: q.options,
+  answerIndex: (q.a ^ OBF_KEY),
+  explanation: q.explanation
+}));
+
+/* =========================================================
+   STORAGE HELPER (fallback in-memory jika localStorage diblokir)
+   ========================================================= */
+const memStore = {};
+function storageGet(k){ try { return localStorage.getItem(k); } catch(e){ return memStore[k] || null; } }
+function storageSet(k,v){ try { localStorage.setItem(k,v); } catch(e){ memStore[k] = v; } }
+function storageRemove(k){ try { localStorage.removeItem(k); } catch(e){ delete memStore[k]; } }
+
+/* =========================================================
+   STATE
+   ========================================================= */
+let state = null;
+let timerId = null;
+let timeLeft = TIME_LIMIT;
+
+function saveState(){ try { storageSet(STORAGE_KEY, JSON.stringify(state)); } catch(e){} }
+function loadState(){ try { const raw = storageGet(STORAGE_KEY); return raw ? JSON.parse(raw) : null; } catch(e){ return null; } }
+function clearState(){ storageRemove(STORAGE_KEY); }
+
+/* =========================================================
+   UTIL
+   ========================================================= */
+function formatScore(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+function getSafeScore(currentIndex){
+  let safe = 0;
+  for(const sp of SAFE_POINTS){ if(sp < currentIndex) safe = SCORE_LADDER[sp]; }
+  return safe;
+}
+function getStageColor(stage){ return stage === 3 ? 0xfbbf24 : (stage === 2 ? 0x818cf8 : 0x3b82f6); }
+
+/* =========================================================
+   THREE.JS — BACKGROUND ATOM
+   ========================================================= */
+let renderer = null, scene = null, camera = null, atomGroup = null, nucleusMat = null;
+let atomColorTarget = { r:0x3b/255, g:0x82/255, b:0xf6/255 };
+let currentColorObj = { r:0x3b/255, g:0x82/255, b:0xf6/255 };
+let atomRevertTimer = null;
+
+function hexToRgb(hex){ return { r:((hex>>16)&255)/255, g:((hex>>8)&255)/255, b:(hex&255)/255 }; }
+
+function initThree(){
+  const canvas = document.getElementById('bg');
+  if(typeof THREE === 'undefined'){ canvas.style.display = 'none'; return; }
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true, powerPreference:'low-power' });
+  } catch(e){
+    canvas.style.display = 'none';
+    document.body.style.background = 'linear-gradient(135deg,#0a0e1a,#1e1b4b,#0a0e1a)';
+    return;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 100);
+  camera.position.z = 6.5;
+
+  atomGroup = new THREE.Group();
+  scene.add(atomGroup);
+
+  // Inti atom (wireframe icosahedron)
+  const nGeo = new THREE.IcosahedronGeometry(0.85, 1);
+  nucleusMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, wireframe: true, transparent:true, opacity:0.75 });
+  atomGroup.add(new THREE.Mesh(nGeo, nucleusMat));
+
+  // 3 orbit + elektron
+  const orbitColors = [0x60a5fa, 0x818cf8, 0x38bdf8];
+  for(let i=0; i<3; i++){
+    const g = new THREE.Group();
+    const r = 1.9 + i * 0.45;
+    const pts = [];
+    for(let j=0; j<=48; j++){
+      const a = (j/48) * Math.PI * 2;
+      pts.push(new THREE.Vector3(Math.cos(a)*r, Math.sin(a)*r, 0));
+    }
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
+    const lineMat = new THREE.LineBasicMaterial({ color: orbitColors[i], transparent:true, opacity:0.35 });
+    g.add(new THREE.Line(lineGeo, lineMat));
+
+    for(let k=0; k<2; k++){
+      const eGeo = new THREE.SphereGeometry(0.1, 10, 10);
+      const eMat = new THREE.MeshBasicMaterial({ color: orbitColors[i] });
+      const e = new THREE.Mesh(eGeo, eMat);
+      e.userData = { isElectron:true, r:r, offset: k*Math.PI };
+      g.add(e);
+    }
+    g.rotation.x = (Math.PI/3) * i - Math.PI/3;
+    g.rotation.y = (Math.PI/4) * i;
+    g.userData = { isOrbit:true, spinSpeed: 0.5 + i*0.35 };
+    atomGroup.add(g);
+  }
+
+  window.addEventListener('resize', onResize);
+  requestAnimationFrame(animate);
+}
+
+function onResize(){
+  if(!renderer) return;
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+let lastFrame = 0;
+function animate(t){
+  requestAnimationFrame(animate);
+  if(!renderer || !atomGroup) return;
+  // throttle ~30 FPS untuk hemat baterai HP
+  if(t - lastFrame < 33) return;
+  lastFrame = t;
+  const time = t * 0.001;
+
+  atomGroup.rotation.y += 0.004;
+  atomGroup.rotation.x = Math.sin(time*0.4) * 0.18;
+
+  atomGroup.children.forEach(child => {
+    if(child.userData && child.userData.isOrbit){
+      const sp = child.userData.spinSpeed;
+      child.children.forEach(c => {
+        if(c.userData && c.userData.isElectron){
+          const a = time * sp + c.userData.offset;
+          c.position.x = Math.cos(a) * c.userData.r;
+          c.position.y = Math.sin(a) * c.userData.r;
+        }
+      });
+    }
+  });
+
+  // transisi warna inti atom
+  if(nucleusMat){
+    currentColorObj.r += (atomColorTarget.r - currentColorObj.r) * 0.08;
+    currentColorObj.g += (atomColorTarget.g - currentColorObj.g) * 0.08;
+    currentColorObj.b += (atomColorTarget.b - currentColorObj.b) * 0.08;
+    nucleusMat.color.setRGB(currentColorObj.r, currentColorObj.g, currentColorObj.b);
+  }
+
+  renderer.render(scene, camera);
+}
+
+function flashAtom(hex){
+  const c = hexToRgb(hex);
+  atomColorTarget = c;
+  if(atomRevertTimer) clearTimeout(atomRevertTimer);
+  atomRevertTimer = setTimeout(() => {
+    atomColorTarget = hexToRgb(getStageColor(state ? state.stage : 1));
+  }, 2200);
+}
+function setAtomStageColor(){
+  atomColorTarget = hexToRgb(getStageColor(state ? state.stage : 1));
+}
+
+/* =========================================================
+   RENDER — HEADER & KARTU SOAL
+   ========================================================= */
+function render(startTimerFlag = true){
+  if(!state) return;
+  const q = QUESTIONS[state.currentIndex];
+  if(!q) return;
+
+  document.getElementById('stageBadge').textContent = `Stage ${q.stage}`;
+  document.getElementById('qBadge').textContent = `Soal ${state.currentIndex + 1}/${TOTAL_QUESTIONS}`;
+  document.getElementById('scoreVal').textContent = formatScore(state.score);
+
+  const btnTimer = document.getElementById('btnTimer');
+  btnTimer.textContent = state.timerEnabled ? '⏱' : '⏸';
+  btnTimer.style.opacity = state.timerEnabled ? 1 : 0.5;
+
+  document.getElementById('questionText').textContent = q.question;
+
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback';
+  fb.textContent = '';
+
+  renderOptions();
+  renderLifelines();
+
+  document.getElementById('btnLock').disabled = state.selectedOption === null || state.locked;
+  document.getElementById('btnWalk').disabled = !!state.locked;
+
+  const showTimer = state.timerEnabled && !state.locked;
+  document.getElementById('timerBar').classList.toggle('active', showTimer);
+  document.getElementById('timerText').classList.toggle('active', showTimer);
+  if(showTimer){
+    if(startTimerFlag) startTimer();
+  } else {
+    stopTimer();
+  }
+  setAtomStageColor();
+}
+
+function renderOptions(){
+  const q = QUESTIONS[state.currentIndex];
+  const container = document.getElementById('options');
+  container.innerHTML = '';
+  const letters = ['A','B','C','D'];
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.type = 'button';
+    const hidden = state.hiddenOptions && state.hiddenOptions.includes(i);
+    if(hidden) btn.classList.add('hidden-opt');
+    if(state.selectedOption === i && !state.locked) btn.classList.add('selected');
+    btn.disabled = state.locked || hidden;
+    btn.innerHTML = `<span class="letter">${letters[i]}</span><span class="text">${opt}</span>`;
+    if(!state.locked && !hidden){
+      btn.addEventListener('click', () => selectOption(i));
+    }
+    container.appendChild(btn);
+  });
+}
+
+function renderLifelines(){
+  const container = document.getElementById('lifelines');
+  container.innerHTML = '';
+  const items = [
+    { key:'fifty', icon:'50:50', label:'50:50', fn: useFifty },
+    { key:'audience', icon:'👥', label:'Tanya Penonton', fn: useAudience },
+    { key:'phone', icon:'📞', label:'Telepon Teman', fn: usePhone }
+  ];
+  items.forEach(it => {
+    const btn = document.createElement('button');
+    btn.className = 'lifeline';
+    btn.type = 'button';
+    const available = state.lifelines[it.key] && !state.locked;
+    btn.disabled = !available;
+    btn.innerHTML = `<span class="icon">${it.icon}</span><span>${it.label}</span>`;
+    if(available) btn.addEventListener('click', it.fn);
+    container.appendChild(btn);
+  });
+}
+
+/* =========================================================
+   INTERAKSI JAWABAN
+   ========================================================= */
+function selectOption(i){
+  if(state.locked) return;
+  if(state.hiddenOptions && state.hiddenOptions.includes(i)) return;
+  state.selectedOption = i;
+  document.querySelectorAll('.option').forEach((btn, idx) => {
+    btn.classList.toggle('selected', idx === i);
+  });
+  updateLockButton();
+}
+function updateLockButton(){
+  document.getElementById('btnLock').disabled = state.selectedOption === null || state.locked;
+}
+
+function showConfirmModal(){
+  const q = QUESTIONS[state.currentIndex];
+  const letters = ['A','B','C','D'];
+  const chosen = letters[state.selectedOption];
+  const chosenText = q.options[state.selectedOption];
+  const body = `
+    <p>Apakah Anda yakin dengan jawaban <b>${chosen}. ${chosenText}</b>?</p>
+    <p class="hint">Setelah dikunci, jawaban tidak dapat diubah.</p>
+  `;
+  showModal('🔒 Kunci Jawaban?', body, [
+    { label:'✅ Ya, Kunci!', class:'btn-primary', fn: confirmLock },
+    { label:'Batal', class:'btn-secondary', fn: closeModal }
+  ]);
+}
+
+function confirmLock(){
+  closeModal();
+  stopTimer();
+  document.getElementById('timerBar').classList.remove('active');
+  document.getElementById('timerText').classList.remove('active');
+  state.locked = true;
+
+  const q = QUESTIONS[state.currentIndex];
+  const chosen = state.selectedOption;
+  const isCorrect = chosen === q.answerIndex;
+
+  // Warnai tombol opsi
+  document.querySelectorAll('.option').forEach((btn, i) => {
+    btn.disabled = true;
+    btn.classList.remove('selected');
+    if(i === q.answerIndex) btn.classList.add('correct');
+    if(i === chosen && !isCorrect) btn.classList.add('wrong');
+  });
+
+  // Feedback edukatif
+  const fb = document.getElementById('feedback');
+  fb.innerHTML = (isCorrect ? '✅ <b>Benar!</b> ' : '❌ <b>Salah.</b> ') + q.explanation;
+  fb.className = 'feedback show ' + (isCorrect ? 'correct' : 'wrong');
+
+  flashAtom(isCorrect ? 0x22c55e : 0xef4444);
+
+  const timeUsed = state.timerEnabled ? Math.round((TIME_LIMIT - Math.max(0,timeLeft)) * 1000) : 0;
+  state.history.push({
+    q: q.id,
+    chosen: ['A','B','C','D'][chosen],
+    correct: isCorrect,
+    timeMs: timeUsed
+  });
+
+  document.getElementById('btnLock').disabled = true;
+  document.getElementById('btnWalk').disabled = true;
+  document.querySelectorAll('.lifeline').forEach(b => b.disabled = true);
+
+  if(isCorrect){
+    setTimeout(() => {
+      if(state.currentIndex >= TOTAL_QUESTIONS - 1){
+        state.score = SCORE_LADDER[14];
+        state.status = 'won';
+        state.finishedAt = new Date().toISOString();
+        saveState();
+        showEndModal('won');
+      } else {
+        state.score = SCORE_LADDER[state.currentIndex];
+        state.currentIndex++;
+        state.stage = QUESTIONS[state.currentIndex].stage;
+        state.selectedOption = null;
+        state.locked = false;
+        state.hiddenOptions = [];
+        saveState();
+        render(true);
+      }
+    }, 2400);
+  } else {
+    setTimeout(() => {
+      state.score = getSafeScore(state.currentIndex);
+      state.status = 'lost';
+      state.finishedAt = new Date().toISOString();
+      saveState();
+      showEndModal('lost');
+    }, 2400);
+  }
+}
+
+function showWalkAwayConfirm(){
+  if(state.locked) return;
+  const currentScore = state.currentIndex > 0 ? SCORE_LADDER[state.currentIndex - 1] : 0;
+  const body = `<p>Yakin ingin berhenti? Anda akan membawa pulang nilai <b>${formatScore(currentScore)}</b>.</p>`;
+  showModal('🚪 Berhenti Bermain?', body, [
+    { label:'✅ Ya, Berhenti', class:'btn-danger', fn: () => { closeModal(); walkAway(); } },
+    { label:'Lanjut Main', class:'btn-secondary', fn: closeModal }
+  ]);
+}
+
+function walkAway(){
+  stopTimer();
+  state.score = state.currentIndex > 0 ? SCORE_LADDER[state.currentIndex - 1] : 0;
+  state.status = 'walked-away';
+  state.finishedAt = new Date().toISOString();
+  saveState();
+  showEndModal('walked-away');
+}
+
+/* =========================================================
+   TIMER
+   ========================================================= */
+function startTimer(){
+  stopTimer();
+  timeLeft = TIME_LIMIT;
+  updateTimerDisplay();
+  timerId = setInterval(() => {
+    timeLeft -= 0.1;
+    updateTimerDisplay();
+    if(timeLeft <= 0){ stopTimer(); timeUp(); }
+  }, 100);
+}
+function stopTimer(){ if(timerId){ clearInterval(timerId); timerId = null; } }
+function updateTimerDisplay(){
+  const pct = Math.max(0, timeLeft / TIME_LIMIT) * 100;
+  document.getElementById('timerFill').style.width = pct + '%';
+  document.getElementById('timerText').textContent = `⏱ ${Math.ceil(Math.max(0, timeLeft))}s`;
+}
+function timeUp(){
+  if(!state || state.locked) return;
+  state.locked = true;
+  const q = QUESTIONS[state.currentIndex];
+  state.history.push({ q:q.id, chosen:null, correct:false, timeMs: TIME_LIMIT*1000 });
+  state.score = getSafeScore(state.currentIndex);
+  state.status = 'timeout';
+  state.finishedAt = new Date().toISOString();
+  saveState();
+  document.querySelectorAll('.option').forEach((btn, i) => {
+    btn.disabled = true;
+    if(i === q.answerIndex) btn.classList.add('correct');
+  });
+  const fb = document.getElementById('feedback');
+  fb.innerHTML = '⏰ <b>Waktu habis!</b> ' + q.explanation;
+  fb.className = 'feedback show wrong';
+  flashAtom(0xef4444);
+  setTimeout(() => showEndModal('timeout'), 2200);
+}
+
+/* =========================================================
+   LIFELINES
+   ========================================================= */
+function useFifty(){
+  if(!state || !state.lifelines.fifty || state.locked) return;
+  state.lifelines.fifty = false;
+  const q = QUESTIONS[state.currentIndex];
+  const wrong = [0,1,2,3].filter(i => i !== q.answerIndex);
+  shuffle(wrong);
+  state.hiddenOptions = wrong.slice(0, 2);
+  if(state.hiddenOptions.includes(state.selectedOption)) state.selectedOption = null;
+  saveState();
+  renderLifelines();
+  renderOptions();
+  updateLockButton();
+}
+
+function useAudience(){
+  if(!state || !state.lifelines.audience || state.locked) return;
+  state.lifelines.audience = false;
+  const q = QUESTIONS[state.currentIndex];
+  const correctBias = 0.7 + Math.random() * 0.15;
+  const percents = [0,0,0,0];
+  percents[q.answerIndex] = Math.round(correctBias * 100);
+  const remaining = 100 - percents[q.answerIndex];
+  const others = [0,1,2,3].filter(i => i !== q.answerIndex);
+  const w = [Math.random(), Math.random(), Math.random()];
+  const wSum = w[0]+w[1]+w[2] || 1;
+  const shares = w.map(x => Math.round(remaining * x / wSum));
+  const sSum = shares.reduce((a,b)=>a+b,0);
+  shares[0] += remaining - sSum;
+  percents[others[0]] = shares[0];
+  percents[others[1]] = shares[1];
+  percents[others[2]] = shares[2];
+  saveState();
+  renderLifelines();
+  showAudienceModal(percents);
+}
+
+function usePhone(){
+  if(!state || !state.lifelines.phone || state.locked) return;
+  state.lifelines.phone = false;
+  const q = QUESTIONS[state.currentIndex];
+  const isRight = Math.random() < 0.8;
+  let friendIdx;
+  if(isRight){ friendIdx = q.answerIndex; }
+  else {
+    const wrong = [0,1,2,3].filter(i => i !== q.answerIndex);
+    friendIdx = wrong[Math.floor(Math.random()*wrong.length)];
+  }
+  saveState();
+  renderLifelines();
+  showPhoneModal(friendIdx);
+}
+
+function showAudienceModal(percents){
+  const letters = ['A','B','C','D'];
+  const maxPx = 110;
+  let html = '<p style="text-align:center;font-size:12px;color:#94a3b8;margin-bottom:6px">Hasil voting penonton:</p>';
+  html += '<div class="audience-chart">';
+  for(let i=0;i<4;i++){
+    const h = Math.max(6, Math.round(percents[i] / 100 * maxPx));
+    html += `
+      <div class="aud-bar">
+        <div class="aud-pct">${percents[i]}%</div>
+        <div class="aud-fill" style="height:${h}px"></div>
+        <div class="aud-letter">${letters[i]}</div>
+      </div>`;
+  }
+  html += '</div>';
+  showModal('👥 Tanya Penonton', html, [
+    { label:'Tutup', class:'btn-primary', fn: closeModal }
+  ]);
+}
+
+function showPhoneModal(friendIdx){
+  const letters = ['A','B','C','D'];
+  const body = `
+    <p style="font-size:34px;text-align:center;margin:8px 0">📞</p>
+    <p><b>"Halo! Menurut saya, jawabannya <span style="color:#60a5fa;font-size:17px">${letters[friendIdx]}</span>. Semoga membantu ya!"</b></p>
+    <p class="hint">Teman Anda memberikan rekomendasi, keputusan tetap milik Anda.</p>
+  `;
+  showModal('📞 Telepon Teman', body, [
+    { label:'Tutup', class:'btn-primary', fn: closeModal }
+  ]);
+}
+
+/* =========================================================
+   MODAL HELPER
+   ========================================================= */
+function showModal(title, bodyHtml, actions){
+  const modal = document.getElementById('modal');
+  document.getElementById('modalTitle').innerHTML = title;
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  const actionsEl = document.getElementById('modalActions');
+  actionsEl.innerHTML = '';
+  actions.forEach(a => {
+    const btn = document.createElement('button');
+    btn.className = a.class;
+    btn.textContent = a.label;
+    btn.addEventListener('click', a.fn);
+    actionsEl.appendChild(btn);
+  });
+  modal.classList.remove('hidden');
+}
+function closeModal(){ document.getElementById('modal').classList.add('hidden'); }
+
+/* =========================================================
+   START / END MODAL
+   ========================================================= */
+function showStartModal(timerDefault = true){
+  const body = `
+    <p>Selamat datang di <b>Termokimia Millionaire</b>!</p>
+    <p>Jawab 15 soal Termokimia kelas XI dalam 3 stage untuk meraih nilai tertinggi. Gunakan 3 bantuan: <b>50:50</b>, <b>Tanya Penonton</b>, dan <b>Telepon Teman</b>.</p>
+    <p class="hint">💡 Nilai aman: 1.000 (Stage 1) • 32.000 (Stage 2) • 1.000.000 (Stage 3)</p>
+    <label style="display:flex;flex-direction:column;gap:4px;margin-top:10px;font-size:13px">
+      Nama Pemain
+      <input type="text" id="playerInput" placeholder="Nama kamu" maxlength="30" autocomplete="off">
+    </label>
+    <label class="check-row">
+      <input type="checkbox" id="timerCheck" ${timerDefault ? 'checked' : ''}>
+      Aktifkan timer 45 detik per soal
+    </label>
+    <p class="hint">Tanpa timer = mode santai.</p>
+  `;
+  showModal('💎 Termokimia Millionaire', body, [
+    { label:'▶ Mulai Bermain', class:'btn-primary', fn: () => {
+        const nameEl = document.getElementById('playerInput');
+        const timerEl = document.getElementById('timerCheck');
+        const name = (nameEl && nameEl.value.trim()) || 'Siswa';
+        const timerOn = timerEl ? timerEl.checked : true;
+        closeModal();
+        startNewGame(name, timerOn);
+      }
+    }
+  ]);
+}
+
+function showContinueModal(saved){
+  const availableLifelines = Object.values(saved.lifelines).filter(v=>v).length;
+  const body = `
+    <p>Ditemukan permainan yang belum selesai:</p>
+    <div class="summary-grid">
+      <div class="summary-item"><div class="label">SOAL</div><div class="value">${saved.currentIndex + 1}/${TOTAL_QUESTIONS}</div></div>
+      <div class="summary-item"><div class="label">NILAI</div><div class="value">${formatScore(saved.score)}</div></div>
+      <div class="summary-item"><div class="label">STAGE</div><div class="value">${saved.stage}</div></div>
+      <div class="summary-item"><div class="label">BANTUAN</div><div class="value">${availableLifelines}/3</div></div>
+    </div>
+    <p class="hint">Lanjutkan permainan atau mulai baru?</p>
+  `;
+  showModal('🔄 Lanjutkan Permainan?', body, [
+    { label:'▶ Lanjutkan', class:'btn-primary', fn: () => { closeModal(); resumeGame(saved); } },
+    { label:'🔄 Mulai Baru', class:'btn-secondary', fn: () => { closeModal(); clearState(); state = null; showStartModal(true); } }
+  ]);
+}
+
+function showEndModal(reason){
+  stopTimer();
+  let title, bodyText;
+  if(reason === 'won'){
+    title = '🏆 Selamat, Anda Menang!';
+    bodyText = 'Luar biasa! Anda berhasil menjawab 15 soal Termokimia dengan benar dan membawa pulang nilai tertinggi <b>1.000.000</b>!';
+  } else if(reason === 'lost'){
+    title = '💔 Permainan Berakhir';
+    bodyText = `Sayang sekali! Anda menjawab salah, tetapi masih membawa nilai aman sebesar <b>${formatScore(state.score)}</b>.`;
+  } else if(reason === 'walked-away'){
+    title = '🚪 Anda Berhenti';
+    bodyText = `Anda memilih berhenti dan membawa pulang nilai <b>${formatScore(state.score)}</b>.`;
+  } else {
+    title = '⏰ Waktu Habis';
+    bodyText = `Waktu Anda habis! Nilai yang Anda bawa pulang: <b>${formatScore(state.score)}</b>.`;
+  }
+
+  const correct = state.history.filter(h => h.correct).length;
+  const answered = state.history.length;
+  const avgTime = answered ? Math.round(state.history.reduce((s,h)=>s+h.timeMs,0)/answered/1000) : 0;
+
+  const body = `
+    <p>${bodyText}</p>
+    <div class="summary-grid">
+      <div class="summary-item"><div class="label">NILAI AKHIR</div><div class="value" style="color:#fbbf24">${formatScore(state.score)}</div></div>
+      <div class="summary-item"><div class="label">BENAR</div><div class="value">${correct}/${answered}</div></div>
+      <div class="summary-item"><div class="label">SOAL DIJAWAB</div><div class="value">${answered}</div></div>
+      <div class="summary-item"><div class="label">RATA-RATA WAKTU</div><div class="value">${avgTime}s</div></div>
+    </div>
+  `;
+  showModal(title, body, [
+    { label:'⬇ Unduh Hasil (.json)', class:'btn-primary', fn: downloadJSON },
+    { label:'🔄 Main Lagi', class:'btn-secondary', fn: () => {
+        closeModal(); clearState(); state = null; showStartModal(true);
+      }
+    }
+  ]);
+}
+
+/* =========================================================
+   GAME FLOW
+   ========================================================= */
+function startNewGame(playerName, timerOn){
+  state = {
+    version: 1,
+    player: playerName,
+    startedAt: new Date().toISOString(),
+    finishedAt: null,
+    currentIndex: 0,
+    score: 0,
+    stage: 1,
+    lifelines: { fifty:true, audience:true, phone:true },
+    history: [],
+    status: 'in-progress',
+    timerEnabled: timerOn,
+    selectedOption: null,
+    locked: false,
+    hiddenOptions: []
+  };
+  saveState();
+  render(true);
+}
+
+function resumeGame(saved){
+  state = saved;
+  state.hiddenOptions = state.hiddenOptions || [];
+  state.selectedOption = state.selectedOption ?? null;
+  state.locked = state.locked ?? false;
+  state.timerEnabled = state.timerEnabled ?? true;
+  // Jika ter-lock tapi belum teradvance (tab ditutup saat feedback), proses ulang
+  if(state.locked){
+    const last = state.history[state.history.length - 1];
+    if(last && last.q === QUESTIONS[state.currentIndex].id){
+      if(last.correct){
+        if(state.currentIndex >= TOTAL_QUESTIONS - 1){
+          state.score = SCORE_LADDER[14];
+          state.status = 'won';
+          state.finishedAt = new Date().toISOString();
+          saveState();
+          render(false);
+          setTimeout(() => showEndModal('won'), 100);
+          return;
+        }
+        state.score = SCORE_LADDER[state.currentIndex];
+        state.currentIndex++;
+        state.stage = QUESTIONS[state.currentIndex].stage;
+        state.selectedOption = null;
+        state.locked = false;
+        state.hiddenOptions = [];
+      } else {
+        state.score = getSafeScore(state.currentIndex);
+        state.status = 'lost';
+        state.finishedAt = new Date().toISOString();
+        saveState();
+        render(false);
+        setTimeout(() => showEndModal('lost'), 100);
+        return;
+      }
+    } else {
+      state.locked = false;
+      state.selectedOption = null;
+    }
+  }
+  saveState();
+  render(true);
+}
+
+/* =========================================================
+   DOWNLOAD JSON
+   ========================================================= */
+function downloadJSON(){
+  if(!state) return;
+  const data = {
+    ...state,
+    summary: {
+      totalQuestions: TOTAL_QUESTIONS,
+      answered: state.history.length,
+      correct: state.history.filter(h => h.correct).length,
+      wrong: state.history.filter(h => !h.correct && h.chosen !== null).length,
+      timeout: state.history.filter(h => h.chosen === null).length,
+      avgTimeMs: state.history.length
+        ? Math.round(state.history.reduce((s,h)=>s+h.timeMs,0) / state.history.length)
+        : 0
+    }
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0,10);
+  const safeName = (state.player || 'siswa').replace(/[^a-zA-Z0-9]+/g,'-');
+  a.href = url;
+  a.download = `hasil-termokimia-${safeName}-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+function boot(){
+  initThree();
+
+  document.getElementById('btnLock').addEventListener('click', showConfirmModal);
+  document.getElementById('btnWalk').addEventListener('click', showWalkAwayConfirm);
+  document.getElementById('btnDownload').addEventListener('click', () => { if(state) downloadJSON(); });
+  document.getElementById('btnReset').addEventListener('click', () => {
+    showModal('↺ Reset Permainan?', '<p>Semua progress yang tersimpan akan dihapus. Lanjutkan?</p>', [
+      { label:'🗑 Ya, Reset', class:'btn-danger', fn: () => {
+          closeModal();
+          stopTimer();
+          clearState();
+          state = null;
+          showStartModal(true);
+        }
+      },
+      { label:'Batal', class:'btn-secondary', fn: closeModal }
+    ]);
+  });
+  document.getElementById('btnTimer').addEventListener('click', () => {
+    if(!state) return;
+    state.timerEnabled = !state.timerEnabled;
+    saveState();
+    render(true);
+  });
+
+  const saved = loadState();
+  if(saved && saved.status === 'in-progress'){
+    showContinueModal(saved);
+  } else {
+    showStartModal(true);
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
+📦 Cara Deploy ke GitHub Pages (4 langkah)
+Buat repo baru di GitHub (mis. termokimia-millionaire), lalu unggah file index.html di atas ke root repo.
+
+Buka Settings → Pages pada repo.
+
+Di bagian Source, pilih Deploy from a branch → branch main → folder / (root) → Save.
+
+Tunggu ±1 menit, akses URL https://<username>.github.io/termokimia-millionaire/ — game langsung jalan.
+
+✅ Fitur yang sudah ada di file ini
+Fitur	Status
+15 soal Termokimia (3 stage × 5)	✅
+Skor bertingkat + safe point (1.000 / 32.000 / 1.000.000)	✅
+3 lifelines (50:50, Tanya Penonton, Telepon Teman)	✅
+Timer opsional 45 detik (toggle di header)	✅
+Three.js background (atom 3D, warna berubah per status)	✅
+Mobile view max-width 520px + glassmorphism	✅
+localStorage + auto-save + tombol ⬇ Unduh JSON	✅
+Modal "Lanjutkan / Mulai Baru" saat reload	✅
+Obfuscation answer index (XOR) — aman di localStorage	✅
+Fallback WebGL + fallback localStorage (mode private)	✅
